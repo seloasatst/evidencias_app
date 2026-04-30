@@ -154,27 +154,44 @@ class RouteService {
         0;
 
     final photos = <Map<String, dynamic>>[];
+    String? currentBase64;
+    String? currentFileName;
+
     if (photoBytes != null && photoBytes.isNotEmpty) {
-      photos.add({
-        'fileName': (photoFileName != null && photoFileName.isNotEmpty)
-            ? photoFileName
-            : 'evidencia.jpg',
-        'base64': base64Encode(photoBytes),
-      });
+      currentBase64 = base64Encode(photoBytes);
+      currentFileName = (photoFileName != null && photoFileName.isNotEmpty)
+          ? photoFileName
+          : 'evidencia.jpg';
     } else if (photoBase64 != null && photoBase64.isNotEmpty) {
-      photos.add({
-        'fileName': (photoFileName != null && photoFileName.isNotEmpty)
-            ? photoFileName
-            : 'evidencia.jpg',
-        'base64': photoBase64,
-      });
+      currentBase64 = photoBase64;
+      currentFileName = (photoFileName != null && photoFileName.isNotEmpty)
+          ? photoFileName
+          : 'evidencia.jpg';
     } else if (photoPath != null && photoPath.isNotEmpty) {
       final file = File(photoPath);
       final bytes = await file.readAsBytes();
-      final fileName = photoPath.split(Platform.pathSeparator).last;
+      currentBase64 = base64Encode(bytes);
+      currentFileName = photoPath.split(Platform.pathSeparator).last;
+    }
+
+    if (currentBase64 != null) {
+      // 1. Subir foto directamente al portal de Seloasa
+      try {
+        await http.post(
+          Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'ordenServicio': orderId,
+            'imagen64': currentBase64,
+          }),
+        ).timeout(const Duration(seconds: 15));
+      } catch (e) {
+        print('Error al subir evidencia al portal: $e');
+      }
+
       photos.add({
-        'fileName': fileName,
-        'base64': base64Encode(bytes),
+        'fileName': currentFileName ?? 'evidencia.jpg',
+        'base64': currentBase64,
       });
     }
 

@@ -29,11 +29,29 @@ class IncidentService {
     final photos = <Map<String, dynamic>>[];
 
     if (photoBytes != null && photoBytes.isNotEmpty) {
+      final base64Photo = base64Encode(photoBytes);
+      final fileName = (photoFileName != null && photoFileName.isNotEmpty)
+          ? photoFileName
+          : 'incidencia.jpg';
+
+      // 1. Subir foto directamente al portal de Seloasa
+      try {
+        await http.post(
+          Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'ordenServicio': 'INC_$userCode',
+            'imagen64': base64Photo,
+          }),
+        ).timeout(const Duration(seconds: 15));
+      } catch (e) {
+        print('Error al subir foto al portal: $e');
+        // Continuamos de todos modos, el backend ahora ignora si la subida falló aquí
+      }
+
       photos.add({
-        'fileName': (photoFileName != null && photoFileName.isNotEmpty)
-            ? photoFileName
-            : 'incidencia.jpg',
-        'base64': base64Encode(photoBytes),
+        'fileName': fileName,
+        'base64': base64Photo,
       });
     }
 
