@@ -1,0 +1,92 @@
+class RouteModel {
+  final String id;
+  final String routeId;
+  final String coverage;
+  final String status;
+  final List<OrderModel> orders;
+
+  RouteModel({
+    required this.id,
+    required this.routeId,
+    required this.coverage,
+    this.status = 'PENDIENTE',
+    this.orders = const [],
+  });
+
+  factory RouteModel.fromJson(Map<String, dynamic> json) {
+    final id = (json['numeroGuia'] ?? json['numGuia'] ?? json['guia'] ?? json['idRuta'] ?? json['id'] ?? '').toString();
+    final routeId = (json['idRoute'] ?? json['routeId'] ?? json['idRuta'] ?? id).toString();
+    final origin = (json['iataOrigen'] ?? json['origen'] ?? '').toString().trim();
+    final destination = (json['iataDestino'] ?? json['destino'] ?? json['estadoDestino'] ?? '').toString().trim();
+    final coverage = origin.isNotEmpty && destination.isNotEmpty
+        ? '$origin -> $destination'
+        : (
+            json['cobertura'] ??
+            json['coverage'] ??
+            json['iataDestino'] ??
+            json['estadoDestino'] ??
+            json['ruta'] ??
+            json['descripcion'] ??
+            json['cliente'] ??
+            json['destino'] ??
+            routeId
+          ).toString();
+
+    return RouteModel(
+      id: id,
+      routeId: routeId,
+      coverage: coverage,
+      status: (json['estatusGuia'] ?? json['status'] ?? json['estatus'] ?? 'PENDIENTE').toString(),
+      orders: (json['ordenes'] as List? ?? [])
+          .map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o)))
+          .toList(),
+    );
+  }
+}
+
+class OrderModel {
+  final String guideNumber;
+  final String os;
+  final String referenceOr;
+  final String pieces;
+  final String scheduledDate;
+  final String destinationState;
+  final String client;
+  final String address;
+  final String time;
+
+  OrderModel({
+    required this.guideNumber,
+    required this.os,
+    required this.referenceOr,
+    required this.pieces,
+    required this.scheduledDate,
+    required this.destinationState,
+    required this.client,
+    required this.address,
+    required this.time,
+  });
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      guideNumber: (json['numeroGuia'] ?? json['numGuia'] ?? json['guia'] ?? '').toString(),
+      os: (json['os'] ?? json['numOs'] ?? json['ordenServicio'] ?? '').toString(),
+      referenceOr: (
+        json['referenciaOR'] ??
+        json['referenciaOr'] ??
+        json['referenciaor'] ??
+        json['ReferenciaOR'] ??
+        json['ReferenciaOr'] ??
+        json['referenceOr'] ??
+        json['referenceor'] ??
+        ''
+      ).toString(),
+      pieces: (json['ppza'] ?? json['pPza'] ?? json['piezas'] ?? json['cantidadPiezas'] ?? '').toString(),
+      scheduledDate: (json['fechaProgramada'] ?? json['fecha_programada'] ?? json['programDate'] ?? json['fecha'] ?? '').toString(),
+      destinationState: (json['estadoDestino'] ?? json['destinoEstado'] ?? json['estado'] ?? '').toString(),
+      client: (json['clienteDestino'] ?? json['cliente'] ?? json['destino'] ?? '').toString(),
+      address: (json['direccDestino'] ?? json['direccion'] ?? json['domicilio'] ?? '').toString(),
+      time: (json['horaCompromiso'] ?? json['hora'] ?? '').toString(),
+    );
+  }
+}
