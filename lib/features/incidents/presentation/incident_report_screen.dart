@@ -31,6 +31,8 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   Uint8List? _photoBytes;
   String? _photoFileName;
   bool _isLoading = false;
+  bool _isSuccess = false;
+  String? _errorMessage;
   final _incidentService = IncidentService();
 
   final List<Map<String, dynamic>> _types = [
@@ -107,24 +109,40 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Incidencia reportada correctamente'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.pop(context);
+      
+      setState(() {
+        _isLoading = false;
+        _isSuccess = true;
+      });
+
+      if (!widget.autoSubmit) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Incidencia reportada correctamente'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        context.pop();
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      setState(() => _isLoading = false);
+      
+      setState(() {
+        _isLoading = false;
+        _isSuccess = false;
+        _errorMessage = e.toString();
+      });
+
+      if (!widget.autoSubmit) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -132,33 +150,61 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Si es un envío automático y está cargando, mostrar una UI más limpia
-    if (widget.autoSubmit && _isLoading) {
+    // UI para envío automático (Widget)
+    if (widget.autoSubmit) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: AppColors.accentOrange),
-              const SizedBox(height: 24),
-              Text(
-                "Enviando reporte de incidencia...",
-                style: GoogleFonts.poppins(
-                  fontSize: 16, 
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Esto tomará solo un momento",
-                style: GoogleFonts.poppins(
-                  fontSize: 13, 
-                  color: isDark ? Colors.white38 : Colors.grey,
-                ),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isLoading) ...[
+                  const CircularProgressIndicator(color: AppColors.accentOrange),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Enviando reporte...",
+                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                ] else if (_isSuccess) ...[
+                  const Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Reporte Enviado",
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tu incidencia ha sido registrada correctamente.",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white70 : Colors.grey),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildResultButton("VOLVER AL INICIO", Colors.green, () => context.go('/home')),
+                ] else if (_errorMessage != null) ...[
+                  const Icon(Icons.error_outline, color: Colors.red, size: 80),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Error al Enviar",
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white70 : Colors.grey),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildResultButton("REINTENTAR", AppColors.accentOrange, _submit),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.go('/home'),
+                    child: Text("CANCELAR", style: GoogleFonts.poppins(color: Colors.grey)),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       );
@@ -375,6 +421,22 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
           ? const CircularProgressIndicator(color: Colors.white)
           : Text("ENVIAR REPORTE AHORA", 
               style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+      ),
+    );
+  }
+
+  Widget _buildResultButton(String label, Color color, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+        child: Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
       ),
     );
   }

@@ -19,7 +19,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/evidencias')) return 0;
     if (location.startsWith('/home')) return 1;
-    if (location.startsWith('/checklist')) return 2;
+    // if (location.startsWith('/checklist')) return 2;
     return 1;
   }
 
@@ -31,9 +31,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       case 1:
         context.goNamed('home');
         break;
-      case 2:
+      /* case 2:
         context.goNamed('checklist_main');
-        break;
+        break; */
     }
   }
 
@@ -118,11 +118,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                 activeIcon: Icon(Icons.home),
                 label: 'Inicio',
               ),
-              BottomNavigationBarItem(
+              /* BottomNavigationBarItem(
                 icon: Icon(Icons.checklist_rtl_outlined),
                 activeIcon: Icon(Icons.checklist_rtl),
                 label: 'Checklist',
-              ),
+              ), */
             ],
             selectedLabelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
             unselectedLabelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w400),
