@@ -80,25 +80,6 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _SummaryCard(
-                    title: "Checklist hoy",
-                    value: "0",
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryCard(
-                    title: "Estado de flota",
-                    value: "-",
-                    valueColor: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _SummaryCard(
                     title: "Alertas activas",
                     value: "0",
                   ),

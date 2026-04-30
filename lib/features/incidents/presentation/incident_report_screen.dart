@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/presentation/auth_provider.dart';
+import '../../widgets/photo_picker.dart';
 import '../data/incident_service.dart';
 
 class IncidentReportScreen extends ConsumerStatefulWidget {
@@ -72,16 +73,14 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final pickedFile = await PhotoPicker.scanDocument();
+    
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
         _photoBytes = bytes;
-        _photoFileName = pickedFile.name;
-        if (!kIsWeb) {
-          _photoFile = File(pickedFile.path);
-        }
+        _photoFileName = pickedFile.path.split('/').last;
+        _photoFile = pickedFile;
       });
     }
   }

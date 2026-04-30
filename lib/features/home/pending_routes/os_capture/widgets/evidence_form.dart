@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
-
+import '../../../../widgets/photo_picker.dart';
 import '../../../presentation/route_provider.dart';
 
 class EvidenceForm extends ConsumerStatefulWidget {
@@ -273,20 +273,20 @@ class _EvidenceFormState extends ConsumerState<EvidenceForm> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
     try {
-      final XFile? pickedFile = await picker.pickImage(
-        source: source,
-        imageQuality: 70,
-      );
+      File? pickedFile;
+      if (source == ImageSource.camera) {
+        pickedFile = await PhotoPicker.scanDocument();
+      } else {
+        pickedFile = await PhotoPicker.pickFromGallery();
+      }
+
       if (pickedFile != null && mounted) {
         final bytes = await pickedFile.readAsBytes();
         setState(() {
           _fotoBytes = bytes;
-          _fotoFileName = pickedFile.name;
-          if (!kIsWeb) {
-            _fotoFile = File(pickedFile.path);
-          }
+          _fotoFileName = pickedFile!.path.split('/').last;
+          _fotoFile = pickedFile;
         });
       }
     } catch (e) {
