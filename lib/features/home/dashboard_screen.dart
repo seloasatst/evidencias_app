@@ -20,7 +20,7 @@ class DashboardScreen extends ConsumerWidget {
       data: (rutas) => rutas.length.toString(),
       orElse: () => "0",
     );
-    
+
     final int hour = DateTime.now().hour;
     String greeting;
     if (hour < 12) {
@@ -58,18 +58,13 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Card Principal
             _SummaryCard(
               title: "Rutas pendientes de cerrar",
               value: pendingCount,
               isFullWidth: true,
             ),
-            
             const SizedBox(height: 16),
-            
-            // Grid de Cards
-            Row(
+            const Row(
               children: [
                 Expanded(
                   child: _SummaryCard(
@@ -77,7 +72,7 @@ class DashboardScreen extends ConsumerWidget {
                     value: "0",
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: _SummaryCard(
                     title: "Alertas activas",
@@ -86,7 +81,6 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            
             const SizedBox(height: 32),
             _buildSectionHeader("Incidencias Recientes"),
             const SizedBox(height: 12),
@@ -115,8 +109,8 @@ class DashboardScreen extends ConsumerWidget {
         border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), 
-            blurRadius: 10
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 10,
           )
         ],
       ),
@@ -127,17 +121,17 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               children: [
                 Icon(
-                  Icons.info_outline, 
-                  color: (isDark ? Colors.white38 : AppColors.textSecondary).withOpacity(0.3), 
-                  size: 40
+                  Icons.info_outline,
+                  color: (isDark ? Colors.white38 : AppColors.textSecondary).withValues(alpha: 0.3),
+                  size: 40,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "No hay incidencias reportadas hoy",
                   style: GoogleFonts.poppins(
-                    fontSize: 12, 
-                    color: isDark ? Colors.white60 : AppColors.textSecondary, 
-                    fontWeight: FontWeight.w500
+                    fontSize: 12,
+                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -153,12 +147,14 @@ class DashboardScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text("REPORTAR NUEVA INCIDENCIA", 
+              child: Text(
+                "REPORTAR NUEVA INCIDENCIA",
                 style: GoogleFonts.poppins(
-                  fontSize: 12, 
-                  fontWeight: FontWeight.w700, 
-                  color: AppColors.accentOrange
-                )),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accentOrange,
+                ),
+              ),
             ),
           ),
         ],
@@ -167,92 +163,15 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _IncidentItem extends StatelessWidget {
-  final String title;
-  final String date;
-  final String type;
-  final String status;
-  final bool isResolved;
-
-  const _IncidentItem({
-    required this.title,
-    required this.date,
-    required this.type,
-    required this.status,
-    this.isResolved = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isResolved ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            isResolved ? Icons.check_circle_outline : Icons.error_outline,
-            color: isResolved ? Colors.green : Colors.red,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title, 
-                style: GoogleFonts.poppins(
-                  fontSize: 13, 
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : AppColors.textPrimary,
-                )
-              ),
-              Text(
-                "$type • $date", 
-                style: GoogleFonts.poppins(
-                  fontSize: 11, 
-                  color: isDark ? Colors.white54 : AppColors.textSecondary
-                )
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: isResolved ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            status,
-            style: GoogleFonts.poppins(
-              fontSize: 10, 
-              fontWeight: FontWeight.bold, 
-              color: isResolved ? Colors.green : Colors.red
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _SummaryCard extends StatelessWidget {
   final String title;
   final String value;
   final bool isFullWidth;
-  final Color? valueColor;
 
   const _SummaryCard({
     required this.title,
     required this.value,
     this.isFullWidth = false,
-    this.valueColor,
   });
 
   @override
@@ -266,7 +185,7 @@ class _SummaryCard extends StatelessWidget {
         border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -289,7 +208,7 @@ class _SummaryCard extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: isFullWidth ? 32 : 24,
               fontWeight: FontWeight.w800,
-              color: valueColor ?? AppColors.accentOrange,
+              color: AppColors.accentOrange,
             ),
           ),
         ],

@@ -1,13 +1,18 @@
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 
-/// Servicio/repo muy sencillo para escoger/tomar fotos.
-/// Lo hacemos como funciones estáticas para que sea fácil llamarlo.
+import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
+import 'package:image_picker/image_picker.dart';
+
+/// Servicio sencillo para escoger o tomar fotos.
 class PhotoPicker {
   static final ImagePicker _picker = ImagePicker();
 
-  /// Escanea un documento automáticamente (detecta bordes y recorta)
+  static void _log(String message) {
+    debugPrint(message);
+  }
+
+  /// Escanea un documento automáticamente.
   static Future<File?> scanDocument() async {
     try {
       final scanner = DocumentScanner(
@@ -23,13 +28,12 @@ class PhotoPicker {
         return File(result.images.first);
       }
     } catch (e) {
-      print('Error al escanear documento: $e');
+      _log('Error al escanear documento: $e');
     }
     return null;
   }
 
-  /// Abre la cámara NATIVA del teléfono (rápido, sin UI custom).
-  /// Devuelve `File` de la foto o null si el usuario canceló.
+  /// Abre la cámara nativa del teléfono.
   static Future<File?> pickFromSystemCamera() async {
     final XFile? taken = await _picker.pickImage(
       source: ImageSource.camera,
@@ -41,8 +45,7 @@ class PhotoPicker {
     return File(taken.path);
   }
 
-  /// Abre la galería (imágenes existentes).
-  /// Devuelve `File` o null si cancelan.
+  /// Abre la galería.
   static Future<File?> pickFromGallery() async {
     final XFile? picked = await _picker.pickImage(
       source: ImageSource.gallery,

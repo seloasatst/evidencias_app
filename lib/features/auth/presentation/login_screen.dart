@@ -1,21 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 
-import 'alerts/success_login.dart';
-import 'alerts/failed_login.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../auth/data/auth_api.dart';
-import '../../auth/data/auth_repository.dart';
-import '../../auth/data/token_storage.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'auth_provider.dart';
 import '../../home/presentation/route_provider.dart';
-
-
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:local_auth/local_auth.dart';
+import 'alerts/failed_login.dart';
+import 'alerts/success_login.dart';
+import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -28,9 +22,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _form = GlobalKey<FormState>();
   final _user = TextEditingController();
   final _pass = TextEditingController();
-  bool _obscure = true;
-
   final _storage = const FlutterSecureStorage();
+
+  bool _obscure = true;
   bool _isBiometricEnabled = false;
 
   @override
@@ -45,10 +39,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _user.text = credentials['user']!;
       _pass.text = credentials['pass']!;
     }
-    
-    // Verificar si la biometría está activa en ajustes
+
     final enabled = await _storage.read(key: 'use_biometrics');
-    if (enabled == 'true') {
+    if (enabled == 'true' && mounted) {
       setState(() => _isBiometricEnabled = true);
     }
   }
@@ -61,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
 
     if (authenticated) {
-      _submit(); // Intentar login con las credenciales auto-completadas
+      _submit();
     }
   }
 
@@ -76,9 +69,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_form.currentState!.validate()) return;
 
     final success = await ref.read(authStateProvider.notifier).login(
-      _user.text,
-      _pass.text,
-    );
+          _user.text,
+          _pass.text,
+        );
 
     if (!mounted) return;
 
@@ -98,17 +91,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final authState = ref.watch(authStateProvider);
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header con curva
             Stack(
               children: [
                 ClipPath(
@@ -128,9 +120,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           errorBuilder: (context, error, stackTrace) =>
                               Container(color: AppColors.primaryGreen),
                         ),
-                        // Capa de color para dar contraste al logo
                         Container(
-                          color: AppColors.primaryGreen.withOpacity(0.75),
+                          color: AppColors.primaryGreen.withValues(alpha: 0.75),
                         ),
                         Center(
                           child: Image.asset(
@@ -147,7 +138,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             ),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
@@ -182,8 +172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             hintText: 'Usuario',
                             labelText: null,
                           ),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Ingresa tu usuario' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu usuario' : null,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -200,8 +189,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                           ),
-                          validator: (v) =>
-                              (v == null || v.length < 4) ? 'Mínimo 4 caracteres' : null,
+                          validator: (v) => (v == null || v.length < 4) ? 'Mínimo 4 caracteres' : null,
                         ),
                         const SizedBox(height: 40),
                         Row(
@@ -209,7 +197,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Expanded(
                               flex: 4,
                               child: ElevatedButton(
-                                onPressed: ref.watch(authStateProvider).isLoading ? null : _submit,
+                                onPressed: authState.isLoading ? null : _submit,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.accentOrange,
                                   foregroundColor: Colors.white,
@@ -219,7 +207,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    if (ref.watch(authStateProvider).isLoading)
+                                    if (authState.isLoading)
                                       const SizedBox(
                                         width: 20,
                                         height: 20,
@@ -247,20 +235,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   child: Container(
                                     height: 56,
                                     decoration: BoxDecoration(
-                                      color: isDark 
-                                          ? Colors.white10 
-                                          : AppColors.primaryGreen.withOpacity(0.1),
+                                      color: isDark ? Colors.white10 : AppColors.primaryGreen.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
-                                        color: isDark 
-                                            ? Colors.white24 
-                                            : AppColors.primaryGreen.withOpacity(0.3)
+                                        color: isDark ? Colors.white24 : AppColors.primaryGreen.withValues(alpha: 0.3),
                                       ),
                                     ),
                                     child: Icon(
-                                      Icons.fingerprint, 
-                                      color: isDark ? Colors.white : AppColors.primaryGreen, 
-                                      size: 32
+                                      Icons.fingerprint,
+                                      color: isDark ? Colors.white : AppColors.primaryGreen,
+                                      size: 32,
                                     ),
                                   ),
                                 ),
@@ -277,7 +261,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 10,
-                      color: isDark ? Colors.white38 : AppColors.textSecondary.withOpacity(0.6),
+                      color: isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -294,10 +278,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 class HeaderClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
-    Path path = Path();
+    final path = Path();
     path.lineTo(0, size.height - 60);
     path.quadraticBezierTo(
-        size.width / 2, size.height + 20, size.width, size.height - 60);
+      size.width / 2,
+      size.height + 20,
+      size.width,
+      size.height - 60,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;

@@ -1,6 +1,3 @@
-// lib/features/auth/presentation/fullscreen_camera_view.dart
-import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -27,14 +24,11 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
     try {
       final cameras = await availableCameras();
 
-      // preferimos cámara trasera si existe
       CameraDescription cam;
       if (cameras.any((c) => c.lensDirection == CameraLensDirection.back)) {
-        cam = cameras.firstWhere(
-              (c) => c.lensDirection == CameraLensDirection.back,
-        );
+        cam = cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
       } else {
-        cam = cameras.first; // fallback
+        cam = cameras.first;
       }
 
       final controller = CameraController(
@@ -72,7 +66,7 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
     try {
       final foto = await _controller!.takePicture();
       if (!mounted) return;
-      Navigator.pop(context, foto.path); // devolvemos el path
+      Navigator.pop(context, foto.path);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +78,6 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
 
   @override
   Widget build(BuildContext context) {
-    // errores tempranos
     if (_errorMsg != null) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -123,10 +116,6 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
     final previewWidth = previewSize.width;
     final previewHeight = previewSize.height;
 
-    // Queremos cubrir toda la pantalla con la cámara sin deformarla.
-    // Lo que hacemos: metemos el CameraPreview en un FittedBox con BoxFit.cover
-    // y le damos el tamaño "natural" (height = previewHeight, width = previewWidth)
-    // dentro de un SizedBox que está rotado si hace falta.
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -144,8 +133,6 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
               ),
             ),
           ),
-
-          // Cerrar
           Positioned(
             top: 40,
             left: 20,
@@ -154,8 +141,6 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-
-          // Botón disparo
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
@@ -165,13 +150,13 @@ class _FullscreenCameraViewState extends State<FullscreenCameraView> {
                 onPressed: _tomarFoto,
                 child: _tomando
                     ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Icon(Icons.camera_alt, size: 32),
               ),
             ),

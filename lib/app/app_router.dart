@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 
+import '../features/auth/presentation/auth_provider.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/checklist/checklist_history_screen.dart';
 import '../features/checklist/checklist_screen.dart';
@@ -15,7 +16,6 @@ import '../features/incidents/presentation/incident_report_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import 'app_shell.dart';
-import '../features/auth/presentation/auth_provider.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -25,7 +25,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/home',
-    // Fallback para rutas no encontradas o errores del widget
     errorBuilder: (context, state) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return Scaffold(
@@ -39,7 +38,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.error_outline, size: 64, color: Colors.red),
@@ -48,7 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 Text(
                   '¡Ups! Ruta no encontrada',
                   style: GoogleFonts.poppins(
-                    fontSize: 20, 
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
@@ -58,7 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   'La ruta "${state.uri.path}" no existe o ha sido movida.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 14, 
+                    fontSize: 14,
                     color: isDark ? Colors.white38 : AppColors.textSecondary,
                   ),
                 ),
@@ -85,30 +84,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       );
     },
     redirect: (context, state) {
-      // Si no ha terminado de inicializar, no redirigir todavía
       if (!authState.isInitialized) return null;
 
-      final bool loggedIn = authState.user != null;
-      final bool loggingIn = state.matchedLocation == '/login';
-      final bool isRoot = state.matchedLocation == '/';
-      final bool isAutoIncident = state.matchedLocation == '/incident' && 
-                                  state.uri.queryParameters['auto'] == 'true';
+      final loggedIn = authState.user != null;
+      final loggingIn = state.matchedLocation == '/login';
+      final isRoot = state.matchedLocation == '/';
+      final isAutoIncident = state.matchedLocation == '/incident' && state.uri.queryParameters['auto'] == 'true';
 
-      // Si no está logueado
       if (!loggedIn) {
-        // Permitir /incident si es auto (el screen manejará el auto-login)
         if (isAutoIncident) return null;
-        // En cualquier otro caso, mandar a login si no está ya ahí
         return loggingIn ? null : '/login';
       }
 
-      // Si ya está logueado e intenta ir a login o a la raíz, mandar a home
       if (loggingIn || isRoot) return '/home';
 
       return null;
     },
     routes: [
-      // Ruta raíz que redirige a home (manejada por el redirect logic arriba)
       GoRoute(
         path: '/',
         builder: (context, state) => const SizedBox.shrink(),
@@ -118,8 +110,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'login',
         builder: (context, state) => const LoginScreen(),
       ),
-
-      // Shell que envuelve las pantallas principales con el Menú Global
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
@@ -136,9 +126,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/checklist',
             name: 'checklist_main',
-            builder: (context, state) {
-              return const ChecklistHistoryScreen();
-            },
+            builder: (context, state) => const ChecklistHistoryScreen(),
           ),
           GoRoute(
             path: '/route-detail',
@@ -154,7 +142,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      
       GoRoute(
         path: '/os-capture',
         name: 'os_capture',
@@ -196,7 +183,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return IncidentReportScreen(initialType: type);
         },
       ),
-      // Alias para el deep link del widget
       GoRoute(
         path: '/incident',
         parentNavigatorKey: rootNavigatorKey,

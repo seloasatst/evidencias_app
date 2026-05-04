@@ -35,7 +35,7 @@ final pendingRoutesProvider = FutureProvider<List<RouteModel>>((ref) async {
   final authState = ref.watch(authStateProvider);
   final service = ref.watch(routeServiceProvider);
   final user = authState.user;
-  final userCode = (user?.username?.isNotEmpty ?? false) ? user!.username : user?.code;
+  final userCode = (user?.username.isNotEmpty ?? false) ? user!.username : user?.code;
   final userRole = _normalizeEvidenceUserRole(user?.type);
 
   if (userCode == null || userCode.isEmpty) {
@@ -87,7 +87,7 @@ class EvidenceNotifier extends StateNotifier<AsyncValue<bool>> {
     state = const AsyncValue.loading();
     try {
       final user = _ref.read(authStateProvider).user;
-      final userCode = (user?.username?.isNotEmpty ?? false) ? user!.username : (user?.code ?? '');
+      final userCode = (user?.username.isNotEmpty ?? false) ? user!.username : (user?.code ?? '');
 
       final success = await _service.sendEvidence(
         routeId: routeId,

@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
+
 import '../../auth/presentation/auth_provider.dart';
 import '../../widgets/photo_picker.dart';
 import '../data/incident_service.dart';
@@ -16,9 +16,9 @@ class IncidentReportScreen extends ConsumerStatefulWidget {
   final bool autoSubmit;
 
   const IncidentReportScreen({
-    super.key, 
-    this.initialType, 
-    this.autoSubmit = false
+    super.key,
+    this.initialType,
+    this.autoSubmit = false,
   });
 
   @override
@@ -49,24 +49,20 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
     if (widget.initialType != null) {
       _selectedType = widget.initialType;
     }
-    
-    // Si viene del widget para envío directo
+
     if (widget.autoSubmit) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final authState = ref.read(authStateProvider);
-        
-        // Si no está logueado, intentar auto-login silencioso
+
         if (authState.user == null) {
           setState(() => _isLoading = true);
           final success = await ref.read(authStateProvider.notifier).loginWithSavedCredentials();
           if (!success && mounted) {
-            // Si falla el auto-login (ej: credenciales expiradas), mandar a login real
             context.go('/login');
             return;
           }
         }
-        
-        // Una vez logueado (o si ya lo estaba), enviar reporte automáticamente
+
         _submit();
       });
     }
@@ -74,7 +70,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
 
   Future<void> _pickImage() async {
     final pickedFile = await PhotoPicker.scanDocument();
-    
+
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
@@ -95,7 +91,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
       final userCode = (user?.username.isNotEmpty ?? false) ? user!.username : (user?.code ?? '');
 
       if (userCode.isEmpty) {
-        throw Exception('No se encontro el usuario para reportar la incidencia.');
+        throw Exception('No se encontró el usuario para reportar la incidencia.');
       }
 
       await _incidentService.sendIncident(
@@ -108,7 +104,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
       );
 
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
         _isSuccess = true;
@@ -126,7 +122,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
         _isSuccess = false;
@@ -149,7 +145,6 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // UI para envío automático (Widget)
     if (widget.autoSubmit) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -221,42 +216,33 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
               color: Colors.white,
             ),
             const SizedBox(width: 12),
-            Text("INCIDENCIAS", 
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            Text("INCIDENCIAS", style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
           ],
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionTitle("Tipo de Incidencia"),
-                  const SizedBox(height: 16),
-                  _buildTypeGrid(),
-                  
-                  const SizedBox(height: 32),
-                  _buildSectionTitle("Evidencia Fotográfica"),
-                  const SizedBox(height: 16),
-                  _buildPhotoCapture(),
-                  
-                  const SizedBox(height: 32),
-                  _buildSectionTitle("Detalles Adicionales"),
-                  const SizedBox(height: 12),
-                  _buildCommentBox(),
-                  
-                  const SizedBox(height: 40),
-                  _buildActionButton(),
-                  const SizedBox(height: 60),
-                ],
-              ),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle("Tipo de Incidencia"),
+              const SizedBox(height: 16),
+              _buildTypeGrid(),
+              const SizedBox(height: 32),
+              _buildSectionTitle("Evidencia Fotográfica"),
+              const SizedBox(height: 16),
+              _buildPhotoCapture(),
+              const SizedBox(height: 32),
+              _buildSectionTitle("Detalles Adicionales"),
+              const SizedBox(height: 12),
+              _buildCommentBox(),
+              const SizedBox(height: 40),
+              _buildActionButton(),
+              const SizedBox(height: 60),
+            ],
+          ),
         ),
       ),
     );
@@ -266,9 +252,9 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
     return Text(
       title,
       style: GoogleFonts.poppins(
-        fontSize: 18, 
-        fontWeight: FontWeight.w800, 
-        color: AppColors.accentOrange
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: AppColors.accentOrange,
       ),
     );
   }
@@ -296,13 +282,10 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
             decoration: BoxDecoration(
               color: isSelected ? t['color'] : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected ? t['color'] : (isDark ? Colors.white10 : AppColors.cardBorder), 
-                width: 2
-              ),
-              boxShadow: isSelected 
-                ? [BoxShadow(color: t['color'].withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] 
-                : [],
+              border: Border.all(color: isSelected ? t['color'] : (isDark ? Colors.white10 : AppColors.cardBorder), width: 2),
+              boxShadow: isSelected
+                  ? [BoxShadow(color: t['color'].withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
+                  : [],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -313,9 +296,9 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
                   t['label'],
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 11, 
-                    fontWeight: FontWeight.w700, 
-                    color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary)
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                   ),
                 ),
               ],
@@ -339,44 +322,46 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder, style: BorderStyle.solid),
         ),
-        child: (_photoBytes != null || _photoFile != null) 
-          ? Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: _photoBytes != null
-                      ? Image.memory(_photoBytes!, width: double.infinity, height: 200, fit: BoxFit.cover)
-                      : Image.file(_photoFile!, width: double.infinity, height: 200, fit: BoxFit.cover),
-                ),
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: CircleAvatar(
-                    backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                    child: IconButton(
-                      icon: const Icon(Icons.refresh, color: AppColors.accentOrange),
-                      onPressed: _pickImage,
+        child: (_photoBytes != null || _photoFile != null)
+            ? Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: _photoBytes != null
+                        ? Image.memory(_photoBytes!, width: double.infinity, height: 200, fit: BoxFit.cover)
+                        : Image.file(_photoFile!, width: double.infinity, height: 200, fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: CircleAvatar(
+                      backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                      child: IconButton(
+                        icon: const Icon(Icons.refresh, color: AppColors.accentOrange),
+                        onPressed: _pickImage,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            )
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withOpacity(0.1),
-                    shape: BoxShape.circle
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, size: 36, color: AppColors.accentOrange),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, size: 36, color: AppColors.accentOrange),
-                ),
-                const SizedBox(height: 12),
-                Text("Capturar Evidencia", 
-                  style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.w600)),
-              ],
-            ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Capturar Evidencia",
+                    style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -395,7 +380,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
         style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white : Colors.black),
         decoration: InputDecoration(
           hintText: "Describe lo sucedido con el mayor detalle posible...",
-          hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : AppColors.textSecondary.withOpacity(0.5), fontSize: 13),
+          hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 13),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(20),
         ),
@@ -414,12 +399,11 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 8,
-          shadowColor: AppColors.accentOrange.withOpacity(0.4),
+          shadowColor: AppColors.accentOrange.withValues(alpha: 0.4),
         ),
-        child: _isLoading 
-          ? const CircularProgressIndicator(color: Colors.white)
-          : Text("ENVIAR REPORTE AHORA", 
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text("ENVIAR REPORTE AHORA", style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
       ),
     );
   }

@@ -40,14 +40,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _toggleBiometrics(bool value) async {
     if (value) {
-      // Validar si la huella es correcta antes de activar
       bool authenticated = await auth.authenticate(
         localizedReason: 'Confirma tu huella para activar el acceso rápido',
         options: const AuthenticationOptions(stickyAuth: true),
       );
       if (!authenticated) return;
     }
-    
+
     await _storage.write(key: 'use_biometrics', value: value.toString());
     setState(() => _isBiometricEnabled = value);
   }
@@ -66,8 +65,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               color: Colors.white,
             ),
             const SizedBox(width: 12),
-            Text("CONFIGURACIONES", 
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            Text("CONFIGURACIONES", style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
           ],
         ),
         centerTitle: true,
@@ -87,7 +85,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: _canCheckBiometrics ? "Activa el acceso biométrico" : "No disponible en este equipo",
             trailing: Switch(
               value: _isBiometricEnabled,
-              activeColor: AppColors.primaryGreen,
+              activeThumbColor: AppColors.primaryGreen,
               onChanged: _canCheckBiometrics ? _toggleBiometrics : null,
             ),
           ),
@@ -128,8 +126,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C2C2C) : Colors.white, 
-              borderRadius: BorderRadius.circular(10)
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: isDark ? Colors.white : AppColors.primaryGreen, size: 22),
           ),
@@ -138,15 +136,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.poppins(
-                  fontSize: 14, 
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AppColors.textPrimary
-                )),
-                Text(subtitle, style: GoogleFonts.poppins(
-                  fontSize: 11, 
-                  color: isDark ? Colors.white70 : AppColors.textSecondary
-                )),
+                Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                Text(subtitle, style: GoogleFonts.poppins(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondary)),
               ],
             ),
           ),

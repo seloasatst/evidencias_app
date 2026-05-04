@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_api_config.dart';
@@ -15,6 +16,10 @@ class IncidentService {
     this.baseUrl = '',
     TokenStorage? storage,
   }) : storage = storage ?? TokenStorage();
+
+  void _log(String message) {
+    debugPrint(message);
+  }
 
   Future<void> sendIncident({
     required String tipo,
@@ -34,7 +39,6 @@ class IncidentService {
           ? photoFileName
           : 'incidencia.jpg';
 
-      // 1. Subir foto directamente al portal de Seloasa
       try {
         await http.post(
           Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
@@ -45,8 +49,7 @@ class IncidentService {
           }),
         ).timeout(const Duration(seconds: 15));
       } catch (e) {
-        print('Error al subir foto al portal: $e');
-        // Continuamos de todos modos, el backend ahora ignora si la subida falló aquí
+        _log('Error al subir foto al portal: $e');
       }
 
       photos.add({
@@ -94,7 +97,7 @@ class IncidentService {
     }
 
     if (decoded is Map<String, dynamic> && decoded['success'] == false) {
-      throw Exception(decoded['message']?.toString() ?? 'La API rechazo la incidencia.');
+      throw Exception(decoded['message']?.toString() ?? 'La API rechazó la incidencia.');
     }
   }
 }

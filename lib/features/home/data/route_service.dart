@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../auth/data/token_storage.dart';
@@ -14,6 +15,10 @@ class RouteService {
   static const Duration _requestTimeout = Duration(seconds: 30);
 
   RouteService({required this.baseUrl, required this.storage});
+
+  void _log(String message) {
+    debugPrint(message);
+  }
 
   Future<http.Response> _getWithRetry(
     Uri uri, {
@@ -66,9 +71,9 @@ class RouteService {
             .toList();
       }
 
-      throw Exception('Error al cargar guias pendientes: ${res.statusCode}');
+      throw Exception('Error al cargar guías pendientes: ${res.statusCode}');
     } catch (e) {
-      print('Error de conexion al cargar guias pendientes: $e.');
+      _log('Error de conexión al cargar guías pendientes: $e.');
       return [];
     }
   }
@@ -101,9 +106,9 @@ class RouteService {
             .toList();
       }
 
-      throw Exception('Error al cargar detalle de la guia: ${res.statusCode}');
+      throw Exception('Error al cargar detalle de la guía: ${res.statusCode}');
     } catch (e) {
-      print('Error de conexion al cargar detalle de la guia: $e.');
+      _log('Error de conexión al cargar detalle de la guía: $e.');
       return [];
     }
   }
@@ -127,7 +132,7 @@ class RouteService {
       }
       return [];
     } catch (e) {
-      print('Error al cargar unidades: $e');
+      _log('Error al cargar unidades: $e');
       return [];
     }
   }
@@ -175,7 +180,6 @@ class RouteService {
     }
 
     if (currentBase64 != null) {
-      // 1. Subir foto directamente al portal de Seloasa
       try {
         await http.post(
           Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
@@ -186,7 +190,7 @@ class RouteService {
           }),
         ).timeout(const Duration(seconds: 15));
       } catch (e) {
-        print('Error al subir evidencia al portal: $e');
+        _log('Error al subir evidencia al portal: $e');
       }
 
       photos.add({
@@ -208,8 +212,6 @@ class RouteService {
       'photos': photos,
     };
 
-    print('UPLOAD payload: ${jsonEncode(payload)}');
-
     final res = await http
         .post(
           uri,
@@ -221,9 +223,6 @@ class RouteService {
           body: jsonEncode(payload),
         )
         .timeout(_requestTimeout);
-
-    print('UPLOAD response status: ${res.statusCode}');
-    print('UPLOAD response body: ${res.body}');
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final body = res.body.trim();
@@ -239,7 +238,7 @@ class RouteService {
           final successValue = decoded['success'];
           if (successValue is bool && successValue == false) {
             throw Exception(
-              decoded['message']?.toString() ?? 'El servidor rechazo la evidencia.',
+              decoded['message']?.toString() ?? 'El servidor rechazó la evidencia.',
             );
           }
         }

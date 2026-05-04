@@ -61,7 +61,6 @@ class SeloasaApp extends ConsumerWidget {
           primary: AppColors.primaryGreen,
           secondary: AppColors.accentOrange,
           surface: AppColors.white,
-          background: AppColors.backgroundLight,
         ),
         textTheme: GoogleFonts.poppinsTextTheme(),
         scaffoldBackgroundColor: AppColors.backgroundLight,
@@ -80,7 +79,6 @@ class SeloasaApp extends ConsumerWidget {
           primary: AppColors.primaryGreen,
           secondary: AppColors.accentOrange,
           surface: const Color(0xFF1E1E1E),
-          background: const Color(0xFF121212),
         ),
         scaffoldBackgroundColor: const Color(0xFF121212),
         appBarTheme: const AppBarTheme(

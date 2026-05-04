@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../home/presentation/route_provider.dart';
 
 enum ChecklistType { salida, entrada }
@@ -34,21 +35,6 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
 
   String? _selectedUnit;
 
-  @override
-  void initState() {
-    super.initState();
-    _routeController.text = widget.initialRouteId ?? '';
-    _selectedUnit = widget.initialUnidad;
-  }
-
-  @override
-  void dispose() {
-    _unitController.dispose();
-    _routeController.dispose();
-    _obsController.dispose();
-    super.dispose();
-  }
-
   final Map<String, List<Map<String, dynamic>>> checklistData = {
     'Estado de la Unidad': [
       {'item': 'Nivel de aceite motor', 'status': null},
@@ -78,6 +64,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     ],
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _routeController.text = widget.initialRouteId ?? '';
+    _selectedUnit = widget.initialUnidad;
+  }
+
+  @override
+  void dispose() {
+    _unitController.dispose();
+    _routeController.dispose();
+    _obsController.dispose();
+    super.dispose();
+  }
+
   void _addDamagePoint(TapUpDetails details) {
     setState(() {
       _damagePoints.add(details.localPosition);
@@ -92,13 +93,15 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
 
   Future<void> _saveChecklist() async {
     final service = ref.read(routeServiceProvider);
-    
+
     final Map<String, dynamic> results = {};
     checklistData.forEach((section, items) {
-      results[section] = items.map((i) => {
-        'item': i['item'],
-        'status': i['status'],
-      }).toList();
+      results[section] = items
+          .map((i) => {
+                'item': i['item'],
+                'status': i['status'],
+              })
+          .toList();
     });
 
     results['damage_points'] = _damagePoints.map((p) => {'x': p.dx, 'y': p.dy}).toList();
@@ -127,7 +130,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String title = widget.type == ChecklistType.salida ? 'Inspección de Salida' : 'Inspección de Entrada';
+    final title = widget.type == ChecklistType.salida ? 'Inspección de Salida' : 'Inspección de Entrada';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -143,18 +146,14 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             _buildSectionHeader("Información de Unidad"),
             const SizedBox(height: 16),
             _buildInfoCard(),
-            
             const SizedBox(height: 32),
             _buildDamageDiagramSection(),
-            
             const SizedBox(height: 32),
             ...checklistData.entries.map((e) => _buildChecklistSection(e.key, e.value)),
-            
             const SizedBox(height: 32),
             _buildSectionHeader("Observaciones Adicionales"),
             const SizedBox(height: 12),
             _buildObservationsField(),
-            
             const SizedBox(height: 40),
             _buildSaveButton(),
             const SizedBox(height: 60),
@@ -172,9 +171,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
   }
 
   Widget _buildInfoCard() {
-    final String routeDisplay = _routeController.text.isEmpty ? "Inspección General" : _routeController.text;
+    final routeDisplay = _routeController.text.isEmpty ? "Inspección General" : _routeController.text;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -190,13 +189,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  "Ruta: $routeDisplay", 
+                  "Ruta: $routeDisplay",
                   style: GoogleFonts.poppins(
-                    fontSize: 14, 
-                    fontWeight: FontWeight.bold, 
-                    color: _routeController.text.isEmpty 
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: _routeController.text.isEmpty
                         ? (isDark ? Colors.white54 : AppColors.textSecondary)
-                        : (isDark ? Colors.white : AppColors.textPrimary)
+                        : (isDark ? Colors.white : AppColors.textPrimary),
                   ),
                 ),
               ),
@@ -210,7 +209,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
               Expanded(
                 child: ref.watch(unitsProvider).when(
                   data: (units) {
-                    if (units.isEmpty) return Text("No hay unidades disponibles", style: TextStyle(color: isDark ? Colors.white70 : Colors.black));
+                    if (units.isEmpty) {
+                      return Text("No hay unidades disponibles", style: TextStyle(color: isDark ? Colors.white70 : Colors.black));
+                    }
                     if (_selectedUnit == null && units.isNotEmpty) {
                       _selectedUnit = units.first;
                     }
@@ -221,13 +222,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                         dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                         icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white : AppColors.accentOrange),
                         style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
-                        items: units.map((String unit) {
+                        items: units.map((unit) {
                           return DropdownMenuItem<String>(
                             value: unit,
                             child: Text(unit),
                           );
                         }).toList(),
-                        onChanged: (String? newValue) {
+                        onChanged: (newValue) {
                           setState(() {
                             _selectedUnit = newValue;
                           });
@@ -264,7 +265,10 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Text("Toca el diagrama para marcar daños externos", style: GoogleFonts.poppins(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary)),
+        Text(
+          "Toca el diagrama para marcar daños externos",
+          style: GoogleFonts.poppins(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
+        ),
         const SizedBox(height: 16),
         Container(
           height: 240,
@@ -273,7 +277,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             color: isDark ? Colors.black : Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.02), blurRadius: 15, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.02),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
@@ -283,10 +293,10 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                 children: [
                   Center(child: Image.asset('assets/images/truck_diagram.jpg', fit: BoxFit.contain)),
                   ..._damagePoints.map((p) => Positioned(
-                    left: p.dx - 12,
-                    top: p.dy - 12,
-                    child: const Icon(Icons.close, color: Colors.red, size: 24, shadows: [Shadow(color: Colors.white, blurRadius: 4)]),
-                  )),
+                        left: p.dx - 12,
+                        top: p.dy - 12,
+                        child: const Icon(Icons.close, color: Colors.red, size: 24, shadows: [Shadow(color: Colors.white, blurRadius: 4)]),
+                      )),
                 ],
               ),
             ),
@@ -304,7 +314,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: _buildSectionHeader(title),
         ),
-        ...items.map((item) => _buildChecklistItem(item)).toList(),
+        ...items.map((item) => _buildChecklistItem(item)),
       ],
     );
   }
@@ -317,7 +327,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder.withOpacity(0.8)),
+        border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder.withValues(alpha: 0.8)),
       ),
       child: Row(
         children: [
@@ -325,9 +335,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             child: Text(
               item['item'],
               style: GoogleFonts.poppins(
-                fontSize: 13, 
-                fontWeight: FontWeight.w600, 
-                color: isDark ? Colors.white : AppColors.textPrimary
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AppColors.textPrimary,
               ),
             ),
           ),
@@ -340,7 +350,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
   }
 
   Widget _buildToggleButton(Map<String, dynamic> item, bool value, String label, Color color) {
-    final bool isSelected = item['status'] == value;
+    final isSelected = item['status'] == value;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => setState(() => item['status'] = value),
@@ -381,7 +391,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
         style: GoogleFonts.poppins(fontSize: 14, color: isDark ? Colors.white : Colors.black),
         decoration: InputDecoration(
           hintText: "Escribe aquí cualquier detalle o anomalía encontrada...",
-          hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : AppColors.textSecondary.withOpacity(0.5), fontSize: 13),
+          hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 13),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
         ),
@@ -399,7 +409,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
           backgroundColor: AppColors.accentOrange,
           foregroundColor: Colors.white,
           elevation: 6,
-          shadowColor: AppColors.accentOrange.withOpacity(0.4),
+          shadowColor: AppColors.accentOrange.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
         child: Text("FINALIZAR REVISIÓN", style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
