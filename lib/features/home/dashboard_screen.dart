@@ -14,10 +14,11 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final String formattedDate = DateFormat('d MMMM yyyy', 'es').format(DateTime.now());
     final user = ref.watch(authStateProvider).user;
+    
     final String welcomeName = user?.name.split(' ').first ?? 'Usuario';
     final routesAsync = ref.watch(pendingRoutesProvider);
     final String pendingCount = routesAsync.maybeWhen(
-      data: (rutas) => rutas.length.toString(),
+      data: (_) => ref.watch(pendingRoutesProvider.notifier).totalCount.toString(),
       orElse: () => "0",
     );
 
@@ -82,7 +83,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 32),
-            _buildSectionHeader("Incidencias Recientes"),
+            _buildSectionHeader("Rutas actuales"),
             const SizedBox(height: 12),
             _buildIncidentsWidget(context),
           ],
@@ -90,6 +91,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+
 
   Widget _buildSectionHeader(String title) {
     return Text(

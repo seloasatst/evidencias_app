@@ -4,7 +4,7 @@
 
 Aplicación Flutter para operación logística enfocada en captura de evidencias de entrega, reporte de incidencias y acceso rápido para personal de ruta dentro del ecosistema OneRoute/SELOASA.
 
-Versión actual del proyecto: `1.1.0+1`
+Versión actual del proyecto: `1.1.1+1`
 
 ## Objetivo
 
@@ -131,13 +131,24 @@ Archivos clave:
 - [lib/core/services/widget_service.dart](seloasa_evidencias/lib/core/services/widget_service.dart)
 - [android/app/src/main/kotlin/com/seloasa/seloasa_evidencias/SeloasaWidgetProvider.kt](seloasa_evidencias/android/app/src/main/kotlin/com/seloasa/seloasa_evidencias/SeloasaWidgetProvider.kt)
 
+### 8. Módulo Administrativo / Paquetería (Nuevo)
+
+- Implementación de lógica diferenciada para el rol **`AD`** (Administrativo).
+- Consumo de API de Paquetería optimizada para perfiles que crean rutas (`UserCreate`) o gestionan unidades (`Gestor`).
+- Soporte para visualización de IDs de ruta oficiales de SAP (formato `R...`).
+- Soporte para paginación dinámica (Page/PageSize) para optimizar el rendimiento en listas largas.
+
+Archivo clave:
+
+- [lib/features/home/presentation/route_provider.dart](seloasa_evidencias/lib/features/home/presentation/route_provider.dart)
+
 ## Endpoints y configuración real
 
 La app contiene endpoints hardcodeados y también permite override por `--dart-define`.
 
 ### URLs base detectadas en código
 
-Backend de evidencias:
+Backend de evidencias / Paquetería:
 
 - `http://evidenciasoneroute.seloasa.com.mx:3010/api/v1`
 
@@ -182,6 +193,7 @@ Payload esperado:
 ### Evidencias / rutas
 
 - `GET http://evidenciasoneroute.seloasa.com.mx:3010/api/v1/evidencias/pendientes/{userCode}?userRole={userRole}`
+- `GET http://evidenciasoneroute.seloasa.com.mx:3010/api/v1/evidencias/admin/{userCode}?page={page}&pageSize={pageSize}` (Solo rol AD)
 - `GET http://evidenciasoneroute.seloasa.com.mx:3010/api/v1/evidencias/detalle/{numGuia}`
 - `POST http://evidenciasoneroute.seloasa.com.mx:3010/api/v1/evidencias/upload`
 - `GET http://evidenciasoneroute.seloasa.com.mx:3010/api/v1/unidades`
@@ -200,6 +212,7 @@ Persistencia detectada:
 - Usuario recordado: clave `saved_user`
 - Password recordado: clave `saved_pass`
 - Biometría: clave `use_biometrics`
+- Rol de usuario: clave `user_role`
 
 Implementación:
 
@@ -285,19 +298,24 @@ flutter build windows
 - `assets/images/login_banner.jpg`
 - `assets/images/One Route.png`
 
-## Estado actual de la versión 1.1
+## Estado actual de la versión 1.2
 
-La versión `1.1.0+1` ya integra:
+La versión `1.2.0` (actual) ya integra:
 
-- flujo de autenticación persistente
-- consulta de rutas pendientes
-- consulta de órdenes por guía
-- carga de evidencias con foto
-- checklist de salida y entrada (Beta)
-- captura de incidencias
-- biometría
-- soporte visual para tema claro/oscuro
-- widget Android con deep link operativo
+- **Módulo de Paquetería / Administrativo con visualización de IDs oficiales SAP.**
+- flujo de autenticación persistente con detección de roles (`AD`, `OP`, `GE`).
+- consulta de rutas pendientes con paginación.
+- consulta de órdenes por guía.
+- carga de evidencias con foto.
+- checklist de salida y entrada (Beta).
+- captura de incidencias.
+- biometría.
+- soporte visual para tema claro/oscuro.
+- widget Android con deep link operativo.
+
+## Licencia
+
+Este repositorio incluye archivo [LICENSE].
 
 ## Licencia
 

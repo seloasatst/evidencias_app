@@ -12,7 +12,7 @@ import 'route_models.dart';
 class RouteService {
   final String baseUrl;
   final TokenStorage storage;
-  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Duration _requestTimeout = Duration(seconds: 120);
 
   RouteService({required this.baseUrl, required this.storage});
 
@@ -29,26 +29,31 @@ class RouteService {
         uri,
         headers: headers,
       ).timeout(_requestTimeout);
-    } on TimeoutException catch (_) {
-      return await http.get(
-        uri,
-        headers: headers,
-      ).timeout(_requestTimeout);
-    } on SocketException catch (_) {
-      return await http.get(
-        uri,
-        headers: headers,
-      ).timeout(_requestTimeout);
+    } on TimeoutException catch (e) {
+      debugPrint('--- ERROR: TIMEOUT DEL SERVIDOR (120s) ---');
+      rethrow;
+    } on SocketException catch (e) {
+      debugPrint('--- ERROR DE CONEXIÓN: Servidor no alcanzable (${e.message}) ---');
+      rethrow;
+    } catch (e) {
+      debugPrint('--- ERROR INESPERADO: $e ---');
+      rethrow;
     }
   }
 
   Future<List<RouteModel>> getPendingRoutes({
     required String userCode,
     required String userRole,
+    String? startDate,
   }) async {
     final token = await storage.getToken();
+    final queryParams = {
+      'userRole': userRole,
+      if (startDate != null) 'startDate': startDate,
+    };
+
     final uri = Uri.parse('$baseUrl/evidencias/pendientes/$userCode').replace(
-      queryParameters: {'userRole': userRole},
+      queryParameters: queryParams,
     );
     final headers = {
       'Content-Type': 'application/json',
@@ -57,7 +62,14 @@ class RouteService {
     };
 
     try {
+      debugPrint('--- INICIANDO PETICIÓN API ---');
+      debugPrint('URL: $uri');
+
       final res = await _getWithRetry(uri, headers: headers);
+      
+      debugPrint('ESTADO: ${res.statusCode}');
+      debugPrint('RESPUESTA: ${res.body}');
+      debugPrint('-----------------------------');
 
       if (res.statusCode == 200) {
         final body = res.body.isNotEmpty ? jsonDecode(res.body) : [];
@@ -75,6 +87,49 @@ class RouteService {
     } catch (e) {
       _log('Error de conexión al cargar guías pendientes: $e.');
       return [];
+    }
+  }
+
+  // NUEVA FUNCIÓN PARA ADMINISTRADORES (Basada en la lógica de Paquetería)
+  Future<RoutePaginatedResponse> getAdminRoutes({
+    required String userCode,
+    String? startDate,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    final token = await storage.getToken();
+    
+    final uri = Uri.parse('$baseUrl/evidencias/admin/$userCode').replace(
+      queryParameters: {
+        if (startDate != null) 'startDate': startDate,
+        'page': page.toString(),
+        'pageSize': pageSize.toString(),
+      },
+    );
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    try {
+      debugPrint('--- LLAMADA ADMIN (GUIDE0) ---');
+      debugPrint('URL: $uri');
+      final res = await _getWithRetry(uri, headers: headers);
+      
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> json = jsonDecode(res.body);
+        final List data = json['data'] ?? [];
+        final total = json['totalCount'] ?? 0;
+        
+        final routes = data.map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j))).toList();
+        return RoutePaginatedResponse(routes: routes, totalCount: total);
+      }
+      return RoutePaginatedResponse(routes: [], totalCount: 0);
+    } catch (e) {
+      debugPrint('Error en getAdminRoutes: $e');
+      return RoutePaginatedResponse(routes: [], totalCount: 0);
     }
   }
 

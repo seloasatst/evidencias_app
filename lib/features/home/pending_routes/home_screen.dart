@@ -73,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Seleccione una guia para capturar evidencias',
+                    'Seleccione una guia (${ref.watch(pendingRoutesProvider.notifier).totalCount} pendientes)',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: isDark ? Colors.white70 : AppColors.textSecondary,
@@ -81,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: () => ref.invalidate(pendingRoutesProvider),
+                  onPressed: () => ref.read(pendingRoutesProvider.notifier).loadInitial(),
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('Recargar'),
                 ),
@@ -116,6 +116,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 }
 
+                final hasMore = ref.watch(pendingRoutesProvider.notifier).hasMore;
+
                 return Column(
                   children: [
                     const SizedBox(height: 8),
@@ -131,11 +133,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           });
 
                           if (sent == true) {
-                            ref.invalidate(pendingRoutesProvider);
+                            ref.read(pendingRoutesProvider.notifier).loadInitial();
                           }
                         },
                       ),
                     ),
+                    if (hasMore) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => ref.read(pendingRoutesProvider.notifier).loadMore(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accentOrange,
+                            minimumSize: const Size(120, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                          ),
+                          child: const Text('Ver mas', style: TextStyle(fontSize: 12, color: Colors.white)),
+                        ),
+                      ),
+                    ],
                   ],
                 );
               },
@@ -174,17 +190,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentOrange,
-                  minimumSize: const Size(120, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                ),
-                child: const Text('Ver mas', style: TextStyle(fontSize: 12)),
-              ),
-            ),
           ],
         ),
       ),

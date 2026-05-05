@@ -90,3 +90,12 @@ class OrderModel {
     );
   }
 }
+class RoutePaginatedResponse {
+  final List<RouteModel> routes;
+  final int totalCount;
+
+  RoutePaginatedResponse({
+    required this.routes,
+    required this.totalCount,
+  });
+}

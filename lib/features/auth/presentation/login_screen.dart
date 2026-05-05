@@ -77,7 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (success) {
       final user = ref.read(authStateProvider).user;
-      ref.read(pendingRoutesProvider.future);
+      ref.read(pendingRoutesProvider.notifier).loadInitial();
       await showSuccessLoginDialog(
         context,
         userName: user?.name ?? 'Usuario',
