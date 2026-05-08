@@ -13,14 +13,16 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String formattedDate = DateFormat('d MMMM yyyy', 'es').format(DateTime.now());
-    final user = ref.watch(authStateProvider).user;
+    final authState = ref.watch(authStateProvider);
+    final fullName = authState.user?.name ?? authState.user?.username ?? 'Usuario';
+    // Tomamos solo el primer nombre para un saludo más limpio
+    final welcomeName = fullName.trim().split(' ')[0];
     
-    final String welcomeName = user?.name.split(' ').first ?? 'Usuario';
-    final routesAsync = ref.watch(pendingRoutesProvider);
-    final String pendingCount = routesAsync.maybeWhen(
-      data: (_) => ref.watch(pendingRoutesProvider.notifier).totalCount.toString(),
-      orElse: () => "0",
-    );
+    final routesState = ref.watch(pendingRoutesProvider);
+    final String pendingCount = routesState.totalCount.toString();
+
+    // Calculamos las rutas "en curso" (aquellas que ya tienen paquetes registrados por el operador)
+    final String inProgressCount = routesState.inProgressCount.toString();
 
     final int hour = DateTime.now().hour;
     String greeting;
@@ -65,12 +67,12 @@ class DashboardScreen extends ConsumerWidget {
               isFullWidth: true,
             ),
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
                 Expanded(
                   child: _SummaryCard(
                     title: "Rutas en curso",
-                    value: "0",
+                    value: inProgressCount,
                   ),
                 ),
                 SizedBox(width: 16),

@@ -4,10 +4,17 @@ import '../../../core/config/app_api_config.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_api.dart';
 import '../data/token_storage.dart';
+import '../../home/presentation/route_provider.dart';
 import '../data/auth_models.dart';
 
+import '../../../core/network/http_client_provider.dart';
+
 final authRepositoryProvider = Provider((ref) {
-  final api = AuthApi(baseUrl: AppApiConfig.authBaseUrl);
+  final httpClient = ref.watch(httpClientProvider);
+  final api = AuthApi(
+    baseUrl: AppApiConfig.authBaseUrl,
+    client: httpClient,
+  );
   return AuthRepository(api);
 });
 
@@ -15,6 +22,7 @@ final tokenStorageProvider = Provider((ref) => TokenStorage());
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
+    ref,
     ref.watch(authRepositoryProvider),
     ref.watch(tokenStorageProvider),
   );
@@ -49,10 +57,11 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref _ref;
   final AuthRepository _repository;
   final TokenStorage _storage;
 
-  AuthNotifier(this._repository, this._storage) : super(AuthState()) {
+  AuthNotifier(this._ref, this._repository, this._storage) : super(AuthState()) {
     _init();
   }
 
@@ -78,6 +87,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await secureStorage.write(key: 'saved_pass', value: pass);
 
       state = state.copyWith(isLoading: false, user: response.user);
+      
+      // precarga de rutas: disparamos la carga en cuanto tenemos el usuario
+      // ignoramos el resultado porque se cargará en el provider global
+      _ref.read(pendingRoutesProvider.notifier).loadInitial();
+      
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

@@ -18,11 +18,13 @@ Future<void> showFailedLoginDialog(
         children: [
           const Icon(Icons.error_rounded, color: Colors.red, size: 28),
           const SizedBox(width: 10),
-          Text(
-            'No se pudo iniciar sesión',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface,
+          Expanded(
+            child: Text(
+              'No se pudo iniciar sesión',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ),
         ],
@@ -32,9 +34,21 @@ Future<void> showFailedLoginDialog(
         style: GoogleFonts.poppins(fontSize: 14),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: Text(
+              'OK',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+            ),
+          ),
         ),
       ],
     ),

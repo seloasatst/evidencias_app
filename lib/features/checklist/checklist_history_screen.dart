@@ -22,9 +22,9 @@ class _ChecklistHistoryScreenState extends ConsumerState<ChecklistHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final routesAsync = ref.watch(pendingRoutesProvider);
+    final routesState = ref.watch(pendingRoutesProvider);
 
-    return routesAsync.when(
+    return routesState.routes.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, s) => Center(child: Text("Error al cargar rutas: $e")),
       data: (routes) {

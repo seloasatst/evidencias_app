@@ -55,13 +55,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                     child: InkWell(
                       onTap: () => context.pushNamed('configuracion'),
                       child: Text(
-                        ref.watch(authStateProvider).user?.name ?? 'Usuario',
+                        (() {
+                          final user = ref.watch(authStateProvider).user;
+                          if (user == null) return 'SIN SESIÓN';
+                          final displayName = user.name.trim().isNotEmpty ? user.name : user.username;
+                          return displayName.toUpperCase();
+                        })(),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                         style: GoogleFonts.poppins(
                           color: AppColors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),

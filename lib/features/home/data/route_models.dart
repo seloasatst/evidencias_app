@@ -3,6 +3,7 @@ class RouteModel {
   final String routeId;
   final String coverage;
   final String status;
+  final double operatorPackages;
   final List<OrderModel> orders;
 
   RouteModel({
@@ -10,6 +11,7 @@ class RouteModel {
     required this.routeId,
     required this.coverage,
     this.status = 'PENDIENTE',
+    this.operatorPackages = 0.0,
     this.orders = const [],
   });
 
@@ -37,10 +39,22 @@ class RouteModel {
       routeId: routeId,
       coverage: coverage,
       status: (json['estatusGuia'] ?? json['status'] ?? json['estatus'] ?? 'PENDIENTE').toString(),
+      operatorPackages: double.tryParse((json['cantOperador'] ?? '0').toString()) ?? 0.0,
       orders: (json['ordenes'] as List? ?? [])
           .map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o)))
           .toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'routeId': routeId,
+      'coverage': coverage,
+      'status': status,
+      'operatorPackages': operatorPackages,
+      'ordenes': orders.map((o) => o.toJson()).toList(),
+    };
   }
 }
 
@@ -88,6 +102,20 @@ class OrderModel {
       address: (json['direccDestino'] ?? json['direccion'] ?? json['domicilio'] ?? '').toString(),
       time: (json['horaCompromiso'] ?? json['hora'] ?? '').toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'numeroGuia': guideNumber,
+      'os': os,
+      'referenciaOR': referenceOr,
+      'ppza': pieces,
+      'fechaProgramada': scheduledDate,
+      'estadoDestino': destinationState,
+      'clienteDestino': client,
+      'direccDestino': address,
+      'horaCompromiso': time,
+    };
   }
 }
 class RoutePaginatedResponse {

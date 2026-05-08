@@ -10,7 +10,6 @@ import 'package:seloasa_evidencias/core/services/widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await WidgetService.init();
   
   initializeDateFormatting('es_MX', null).then((_) {
     runApp(
@@ -18,6 +17,8 @@ void main() async {
         child: SeloasaApp(),
       ),
     );
+    // Inicialización asíncrona después de arrancar para no bloquear el primer frame
+    WidgetService.init();
   });
 }
 

@@ -23,4 +23,13 @@ class TokenStorage {
   Future<String?> getTheme() async {
     return await _storage.read(key: 'app_theme');
   }
+
+  // Métodos genéricos para caché
+  Future<void> save(String key, String value) async {
+    await _storage.write(key: key, value: value);
+  }
+
+  Future<String?> get(String key) async {
+    return await _storage.read(key: key);
+  }
 }

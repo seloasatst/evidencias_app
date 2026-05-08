@@ -12,9 +12,17 @@ import 'route_models.dart';
 class RouteService {
   final String baseUrl;
   final TokenStorage storage;
-  static const Duration _requestTimeout = Duration(seconds: 120);
+  final http.Client _client;
+  final bool _disposeClient;
+  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Duration _uploadTimeout = Duration(seconds: 90);
 
-  RouteService({required this.baseUrl, required this.storage});
+  RouteService({
+    required this.baseUrl, 
+    required this.storage,
+    http.Client? client,
+  }) : _client = client ?? http.Client(),
+       _disposeClient = client == null;
 
   void _log(String message) {
     debugPrint(message);
@@ -25,31 +33,31 @@ class RouteService {
     required Map<String, String> headers,
   }) async {
     try {
-      return await http.get(
+      return await _client.get(
         uri,
         headers: headers,
       ).timeout(_requestTimeout);
-    } on TimeoutException catch (e) {
-      debugPrint('--- ERROR: TIMEOUT DEL SERVIDOR (120s) ---');
-      rethrow;
-    } on SocketException catch (e) {
-      debugPrint('--- ERROR DE CONEXIÓN: Servidor no alcanzable (${e.message}) ---');
-      rethrow;
     } catch (e) {
-      debugPrint('--- ERROR INESPERADO: $e ---');
+      debugPrint('--- ERROR EN PETICIÓN: $e ---');
       rethrow;
     }
   }
 
-  Future<List<RouteModel>> getPendingRoutes({
+  Future<RoutePaginatedResponse> getPendingRoutes({
     required String userCode,
     required String userRole,
     String? startDate,
+    int page = 1,
+    int pageSize = 10,
+    bool includeCount = false,
   }) async {
     final token = await storage.getToken();
     final queryParams = {
       'userRole': userRole,
       if (startDate != null) 'startDate': startDate,
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+      'includeCount': includeCount.toString(),
     };
 
     final uri = Uri.parse('$baseUrl/evidencias/pendientes/$userCode').replace(
@@ -62,32 +70,42 @@ class RouteService {
     };
 
     try {
-      debugPrint('--- INICIANDO PETICIÓN API ---');
+      debugPrint('--- LLAMADA GUIAS (PAGINADA) ---');
       debugPrint('URL: $uri');
 
       final res = await _getWithRetry(uri, headers: headers);
       
-      debugPrint('ESTADO: ${res.statusCode}');
-      debugPrint('RESPUESTA: ${res.body}');
-      debugPrint('-----------------------------');
-
       if (res.statusCode == 200) {
-        final body = res.body.isNotEmpty ? jsonDecode(res.body) : [];
-        final List jsonList = body is List
-            ? body
-            : (body is Map<String, dynamic> && body['data'] is List)
-                ? body['data'] as List
-                : [];
-        return jsonList
-            .map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j)))
-            .toList();
+        // 🚀 OPTIMIZACIÓN: Procesamos el JSON en un Isolate para no bloquear el hilo principal
+        return await compute(_parsePendingRoutesIsolate, res.bodyBytes);
       }
-
-      throw Exception('Error al cargar guías pendientes: ${res.statusCode}');
+      
+      debugPrint('--- ERROR SERVIDOR: Status ${res.statusCode} ---');
+      debugPrint('Cuerpo: ${res.body}');
+      return RoutePaginatedResponse(routes: [], totalCount: 0);
     } catch (e) {
-      _log('Error de conexión al cargar guías pendientes: $e.');
-      return [];
+      debugPrint('--- ERROR EN LLAMADA: $e ---');
+      return RoutePaginatedResponse(routes: [], totalCount: 0);
     }
+  }
+
+  static RoutePaginatedResponse _parsePendingRoutesIsolate(Uint8List bodyBytes) {
+    final decoded = jsonDecode(utf8.decode(bodyBytes, allowMalformed: true));
+    List data;
+    int total;
+
+    if (decoded is List) {
+      data = decoded;
+      total = decoded.length;
+    } else if (decoded is Map<String, dynamic>) {
+      data = decoded['data'] ?? [];
+      total = decoded['totalCount'] ?? (decoded['total'] ?? data.length);
+    } else {
+      throw Exception('Formato de respuesta desconocido');
+    }
+    
+    final routes = data.map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j))).toList();
+    return RoutePaginatedResponse(routes: routes, totalCount: total);
   }
 
   // NUEVA FUNCIÓN PARA ADMINISTRADORES (Basada en la lógica de Paquetería)
@@ -119,18 +137,23 @@ class RouteService {
       final res = await _getWithRetry(uri, headers: headers);
       
       if (res.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(res.body);
-        final List data = json['data'] ?? [];
-        final total = json['totalCount'] ?? 0;
-        
-        final routes = data.map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j))).toList();
-        return RoutePaginatedResponse(routes: routes, totalCount: total);
+        // 🚀 OPTIMIZACIÓN: Procesamos el JSON en un Isolate
+        return await compute(_parseAdminRoutesIsolate, res.bodyBytes);
       }
       return RoutePaginatedResponse(routes: [], totalCount: 0);
     } catch (e) {
       debugPrint('Error en getAdminRoutes: $e');
       return RoutePaginatedResponse(routes: [], totalCount: 0);
     }
+  }
+
+  static RoutePaginatedResponse _parseAdminRoutesIsolate(Uint8List bodyBytes) {
+    final Map<String, dynamic> json = jsonDecode(utf8.decode(bodyBytes, allowMalformed: true));
+    final List data = json['data'] ?? [];
+    final total = json['totalCount'] ?? 0;
+    
+    final routes = data.map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j))).toList();
+    return RoutePaginatedResponse(routes: routes, totalCount: total);
   }
 
   Future<List<OrderModel>> getRouteDetail(String numGuia) async {
@@ -153,6 +176,7 @@ class RouteService {
                 ? body['data'] as List
                 : [];
 
+        debugPrint('--- DETALLE ÉXITO: ${jsonList.length} órdenes ---');
         return jsonList
             .map((j) => OrderModel.fromJson({
                   ...Map<String, dynamic>.from(j),
@@ -161,9 +185,11 @@ class RouteService {
             .toList();
       }
 
+      debugPrint('--- ERROR DETALLE: Status ${res.statusCode} ---');
+      debugPrint('Cuerpo: ${res.body}');
       throw Exception('Error al cargar detalle de la guía: ${res.statusCode}');
     } catch (e) {
-      _log('Error de conexión al cargar detalle de la guía: $e.');
+      debugPrint('--- ERROR EN DETALLE: $e ---');
       return [];
     }
   }
@@ -173,7 +199,7 @@ class RouteService {
     final uri = Uri.parse('$baseUrl/unidades');
 
     try {
-      final res = await http.get(
+      final res = await _client.get(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -236,14 +262,14 @@ class RouteService {
 
     if (currentBase64 != null) {
       try {
-        await http.post(
+        await _client.post(
           Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'ordenServicio': orderId,
             'imagen64': currentBase64,
           }),
-        ).timeout(const Duration(seconds: 15));
+        ).timeout(const Duration(seconds: 30));
       } catch (e) {
         _log('Error al subir evidencia al portal: $e');
       }
@@ -267,7 +293,7 @@ class RouteService {
       'photos': photos,
     };
 
-    final res = await http
+    final res = await _client
         .post(
           uri,
           headers: {
@@ -277,7 +303,7 @@ class RouteService {
           },
           body: jsonEncode(payload),
         )
-        .timeout(_requestTimeout);
+        .timeout(_uploadTimeout);
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final body = res.body.trim();
@@ -319,7 +345,7 @@ class RouteService {
     final token = await storage.getToken();
     final uri = Uri.parse('$baseUrl/api/seloasa/checklist/guardar');
 
-    final res = await http.post(
+    final res = await _client.post(
       uri,
       headers: {
         'Content-Type': 'application/json',
