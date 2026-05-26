@@ -44,7 +44,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              formattedDate,
+              "$formattedDate • v2.0.2",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: isDark ? Colors.white70 : AppColors.textSecondary,

@@ -284,26 +284,43 @@ class RouteService {
       'routeId': routeId,
       'orderId': orderId,
       'status': result,
-      'personaRecibe': '',
-      'folioConfirmacion': '',
       'quantity': quantityValue,
       'comments': observations,
       'fechaEntrega': timestamp,
       'userCode': userCode,
-      'photos': photos,
     };
 
-    final res = await _client
-        .post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(payload),
-        )
-        .timeout(_uploadTimeout);
+    final mainRequest = _client.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload),
+    ).timeout(_uploadTimeout);
+
+    // 🚀 OPTIMIZACIÓN: Ejecutamos la subida al portal en paralelo si existe imagen
+    Future<void>? portalRequest;
+    if (currentBase64 != null) {
+      portalRequest = _client.post(
+        Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'ordenServicio': orderId,
+          'imagen64': currentBase64,
+        }),
+      ).timeout(const Duration(seconds: 30)).then((_) => null).catchError((e) {
+        _log('Error al subir evidencia al portal: $e');
+      });
+    }
+
+    final res = await mainRequest;
+    if (portalRequest != null) {
+      // No esperamos al portal para responder al usuario, 
+      // pero dejamos que termine en segundo plano o lo esperamos al final si es necesario.
+      // Por ahora, priorizamos la respuesta de la API principal.
+    }
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final body = res.body.trim();

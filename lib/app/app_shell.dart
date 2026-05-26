@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import '../features/auth/presentation/auth_provider.dart';
+import 'package:seloasa_evidencias/core/services/update_service.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -15,6 +16,14 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkForUpdates(context);
+    });
+  }
+
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/evidencias')) return 0;

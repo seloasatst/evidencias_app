@@ -39,7 +39,7 @@ class PendingRoutesState {
   }
 }
 
-String _normalizeEvidenceUserRole(AuthUser? user) {
+String normalizeEvidenceUserRole(AuthUser? user) {
   if (user == null) return 'OP';
   final role = (user.type ?? '').trim().toUpperCase();
   final username = (user.username).trim().toLowerCase();
@@ -50,10 +50,8 @@ String _normalizeEvidenceUserRole(AuthUser? user) {
   // 2. GESTORES (Miran @FENV1)
   if (role == 'GE' || username == 'lburola') return 'GE';
   
-  // 3. OPERADORES
-  if (role == 'OP') return 'OP';
-
-  return 'OP';
+  // 3. OTROS (Mantener el rol original o 'OP' si es nulo)
+  return role.isNotEmpty ? role : 'OP';
 }
 
 final routeServiceProvider = Provider((ref) {
@@ -150,7 +148,7 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
 
     final user = _user;
     final userCode = user?.username;
-    final userRole = _normalizeEvidenceUserRole(user);
+    final userRole = normalizeEvidenceUserRole(user);
 
     if (userCode == null || userCode.isEmpty) {
       if (mounted) {
@@ -166,7 +164,7 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
     try {
       final RoutePaginatedResponse response;
 
-      if (user?.type == 'AD') {
+      if (userRole == 'AD') {
         response = await _service.getAdminRoutes(
           userCode: userCode,
           startDate: startDateStr,
@@ -176,7 +174,7 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
       } else {
         response = await _service.getPendingRoutes(
           userCode: userCode,
-          userRole: user?.type ?? 'OP',
+          userRole: userRole,
           startDate: startDateStr,
           page: _currentPage,
           pageSize: 15,
@@ -184,7 +182,18 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
         );
       }
       
-      final newRoutes = response.routes;
+      // 🚀 FILTRADO QUIRÚRGICO: Si es OPERADOR, removemos las rutas de PAQUETERIA
+      // según lo solicitado ("que operadores no tuvieran rutas [de paqueteria]")
+      final newRoutes = response.routes.where((r) {
+        final isPaqueteria = r.type.toUpperCase().contains('PAQUETERIA') || 
+                             r.id.toUpperCase().startsWith('PQG');
+
+        if (userRole == 'OP' && isPaqueteria) {
+          debugPrint('--- 🚫 FILTRADO: Saltando guía ${r.id} (Tipo: ${r.type}) por ser de PAQUETERIA para OPERADOR ---');
+          return false;
+        }
+        return true;
+      }).toList();
       
       // Si el servidor envía el total, lo guardamos.
       if (response.totalCount >= 0) {

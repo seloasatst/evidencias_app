@@ -20,6 +20,13 @@ final guiasPaqueteriaProvider = FutureProvider<List<RouteModel>>((ref) async {
   final service = ref.watch(routeServiceProvider);
   final userCode = user.username.isNotEmpty ? user.username : user.code;
   
+  // 🚀 REGLA DE NEGOCIO: Los OPERADORES no deben ver rutas (incluyendo paquetería)
+  final userRole = normalizeEvidenceUserRole(user);
+  if (userRole == 'OP') {
+    debugPrint('--- 🚫 BLOQUEO PAQUETERIA: Usuario $userCode es OPERADOR ---');
+    return [];
+  }
+
   // Llamamos al servicio estándar pero forzando el rol de GESTOR
   return service.getPendingRoutes(
     userCode: userCode,

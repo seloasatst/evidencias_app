@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 class AppApiConfig {
-  static String get evidenciasBaseUrl => 'https://rutas.seloasa.com.mx/api/seloasa';
-  static String get authBaseUrl => 'https://rutas.seloasa.com.mx/api/seloasa';
+  static String get evidenciasBaseUrl => 'http://rutas.seloasa.com.mx:2350/api/seloasa';
+  static String get authBaseUrl => 'http://rutas.seloasa.com.mx:2350/api/seloasa';
 }

@@ -4,6 +4,7 @@ class RouteModel {
   final String coverage;
   final String status;
   final double operatorPackages;
+  final String type;
   final List<OrderModel> orders;
 
   RouteModel({
@@ -12,6 +13,7 @@ class RouteModel {
     required this.coverage,
     this.status = 'PENDIENTE',
     this.operatorPackages = 0.0,
+    this.type = '',
     this.orders = const [],
   });
 
@@ -40,6 +42,7 @@ class RouteModel {
       coverage: coverage,
       status: (json['estatusGuia'] ?? json['status'] ?? json['estatus'] ?? 'PENDIENTE').toString(),
       operatorPackages: double.tryParse((json['cantOperador'] ?? '0').toString()) ?? 0.0,
+      type: (json['tipoGuia'] ?? json['type'] ?? '').toString(),
       orders: (json['ordenes'] as List? ?? [])
           .map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o)))
           .toList(),
@@ -53,6 +56,7 @@ class RouteModel {
       'coverage': coverage,
       'status': status,
       'operatorPackages': operatorPackages,
+      'type': type,
       'ordenes': orders.map((o) => o.toJson()).toList(),
     };
   }
