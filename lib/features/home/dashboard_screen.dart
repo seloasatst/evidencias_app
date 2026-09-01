@@ -4,14 +4,23 @@ import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../auth/presentation/auth_provider.dart';
 import './presentation/route_provider.dart';
+
+/// Proveedor que obtiene la versión de la app desde pubspec.yaml en tiempo de ejecución.
+final appVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return 'v${info.version}'; // Ej: v2.0.0
+});
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Lee la versión directamente desde pubspec.yaml en tiempo de ejecución
+    final String formatteVersion = ref.watch(appVersionProvider).valueOrNull ?? '...';
     final String formattedDate = DateFormat('d MMMM yyyy', 'es').format(DateTime.now());
     final authState = ref.watch(authStateProvider);
     final fullName = authState.user?.name ?? authState.user?.username ?? 'Usuario';
@@ -44,7 +53,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "$formattedDate • v2.0.2",
+              "$formattedDate • $formatteVersion",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: isDark ? Colors.white70 : AppColors.textSecondary,
@@ -90,6 +99,72 @@ class DashboardScreen extends ConsumerWidget {
             _buildIncidentsWidget(context),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDispersionWidget(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 10,
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: (isDark ? Colors.white38 : AppColors.textSecondary).withValues(alpha: 0.3),
+                  size: 40,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Solicita dispersión a tu tarjeta para combustible, viáticos y más",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => context.pushNamed('dispersion_request'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentOrange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              child: Text(
+                "SOLICITAR DISPERSIÓN",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

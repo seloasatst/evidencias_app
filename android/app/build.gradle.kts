@@ -31,6 +31,15 @@ android {
             isShrinkResources = false
         }
     }
+
+    applicationVariants.all {
+        outputs.forEach { output ->
+            val outputImpl = output as? com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            if (outputImpl != null && buildType.name == "release") {
+                outputImpl.outputFileName = "OneRoute.apk"
+            }
+        }
+    }
 }
 
 flutter {

@@ -17,7 +17,7 @@ class UpdateService {
       final String currentVersion = packageInfo.version;
 
       // 2. Consultar el servidor para obtener la última versión
-      final response = await http.get(Uri.parse(_versionJsonUrl)).timeout(const Duration(seconds: 10));
+      final response = await http.get(Uri.parse(_versionJsonUrl)).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) return;
 
       final data = json.decode(response.body);
@@ -90,9 +90,42 @@ class _UpdateDialogWidgetState extends State<_UpdateDialogWidget> {
   double _downloadProgress = 0.0;
   String _statusText = 'Preparando descarga...';
 
-  void _startUpdate() {
+  Future<void> _startUpdate() async {
     setState(() {
       _isDownloading = true;
+      _statusText = 'Verificando enlace de descarga...';
+    });
+
+    // Validar que la URL del APK es accesible antes de iniciar OTA
+    try {
+      final response = await http.head(Uri.parse(widget.apkUrl))
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('[UpdateService] HEAD status: ${response.statusCode}');
+      debugPrint('[UpdateService] Content-Type: ${response.headers['content-type']}');
+      debugPrint('[UpdateService] Content-Length: ${response.headers['content-length']}');
+
+      if (response.statusCode != 200) {
+        _showError(
+          'No se pudo acceder al archivo de actualización '
+          '(código HTTP ${response.statusCode}). Contacte a soporte.',
+        );
+        return;
+      }
+
+      final contentType = response.headers['content-type'] ?? '';
+      if (!contentType.contains('application/vnd.android.package-archive') &&
+          !contentType.contains('application/octet-stream') &&
+          !contentType.contains('binary/octet-stream')) {
+        debugPrint('[UpdateService] Advertencia: Content-Type inesperado: $contentType');
+        // No bloqueamos, solo advertimos — algunos servidores usan tipos genéricos
+      }
+    } catch (e) {
+      _showError('No se pudo verificar el enlace de descarga: $e');
+      return;
+    }
+
+    setState(() {
       _statusText = 'Descargando actualización (0%)...';
     });
 
@@ -102,6 +135,7 @@ class _UpdateDialogWidgetState extends State<_UpdateDialogWidget> {
         destinationFilename: 'seloasa-evidencias-update.apk',
       ).listen(
         (OtaEvent event) {
+          debugPrint('[UpdateService] OtaEvent: status=${event.status}, value=${event.value}');
           switch (event.status) {
             case OtaStatus.DOWNLOADING:
               final double progress = double.tryParse(event.value ?? '0') ?? 0.0;
@@ -119,19 +153,45 @@ class _UpdateDialogWidgetState extends State<_UpdateDialogWidget> {
               _showError('Ya hay una descarga en curso.');
               break;
             case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-              _showError('No se concedieron permisos para instalar apps.');
+              _showError(
+                'Se requiere permiso para instalar aplicaciones. '
+                'Ve a Configuración → Seguridad → Instalar apps desconocidas.',
+              );
+              break;
+            case OtaStatus.INTERNAL_ERROR:
+              _showError(
+                'Error interno al procesar el paquete (código: ${event.value}). '
+                'El archivo puede estar corrupto o el servidor devolvió un formato inválido.',
+              );
+              break;
+            case OtaStatus.DOWNLOAD_ERROR:
+              _showError(
+                'Error durante la descarga (código: ${event.value}). '
+                'Verifique su conexión a internet e intente de nuevo.',
+              );
+              break;
+            case OtaStatus.CHECKSUM_ERROR:
+              _showError(
+                'El archivo descargado está dañado (checksum inválido). '
+                'Intente de nuevo o contacte a soporte.',
+              );
               break;
             default:
-              _showError('Error en la descarga. Intente de nuevo.');
+              _showError(
+                'Error inesperado (estado: ${event.status}, valor: ${event.value}). '
+                'Intente de nuevo.',
+              );
               break;
           }
         },
         onError: (err) {
-          _showError('Error de red al descargar actualización.');
+          debugPrint('[UpdateService] Stream error: $err');
+          _showError('Error de red al descargar actualización: $err');
         },
       );
     } catch (e) {
-      _showError('No se pudo iniciar la descarga.');
+      debugPrint('[UpdateService] Exception al iniciar OTA: $e');
+      _showError('No se pudo iniciar la descarga: $e');
     }
   }
 
@@ -154,8 +214,8 @@ class _UpdateDialogWidgetState extends State<_UpdateDialogWidget> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return WillPopScope(
-      onWillPop: () async => false, // Evitar cerrar con el botón atrás de Android
+    return PopScope(
+      canPop: false, // Evitar cerrar con el botón atrás de Android
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,

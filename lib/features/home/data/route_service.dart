@@ -99,7 +99,8 @@ class RouteService {
       total = decoded.length;
     } else if (decoded is Map<String, dynamic>) {
       data = decoded['data'] ?? [];
-      total = decoded['totalCount'] ?? (decoded['total'] ?? data.length);
+      final rawTotal = decoded['totalCount'] ?? decoded['total'];
+      total = (rawTotal is int && rawTotal > 0) ? rawTotal : data.length;
     } else {
       throw Exception('Formato de respuesta desconocido');
     }
@@ -150,7 +151,8 @@ class RouteService {
   static RoutePaginatedResponse _parseAdminRoutesIsolate(Uint8List bodyBytes) {
     final Map<String, dynamic> json = jsonDecode(utf8.decode(bodyBytes, allowMalformed: true));
     final List data = json['data'] ?? [];
-    final total = json['totalCount'] ?? 0;
+    final rawTotal = json['totalCount'] ?? json['total'];
+    final total = (rawTotal is int && rawTotal > 0) ? rawTotal : data.length;
     
     final routes = data.map((j) => RouteModel.fromJson(Map<String, dynamic>.from(j))).toList();
     return RoutePaginatedResponse(routes: routes, totalCount: total);
@@ -234,6 +236,13 @@ class RouteService {
   }) async {
     final token = await storage.getToken();
     final uri = Uri.parse('$baseUrl/evidencias/upload');
+    final baseUri = Uri.parse(baseUrl);
+    final uploadUri = Uri(
+      scheme: baseUri.scheme,
+      host: baseUri.host,
+      port: baseUri.port,
+      path: '/seloasa/subida-imagen',
+    );
     final quantityValue = int.tryParse(
           RegExp(r'\d+').firstMatch(quantity)?.group(0) ?? '',
         ) ??
@@ -263,7 +272,7 @@ class RouteService {
     if (currentBase64 != null) {
       try {
         await _client.post(
-          Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+          uploadUri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'ordenServicio': orderId,
@@ -304,7 +313,7 @@ class RouteService {
     Future<void>? portalRequest;
     if (currentBase64 != null) {
       portalRequest = _client.post(
-        Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+        uploadUri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'ordenServicio': orderId,

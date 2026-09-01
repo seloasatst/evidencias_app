@@ -45,12 +45,14 @@ String normalizeEvidenceUserRole(AuthUser? user) {
   final username = (user.username).trim().toLowerCase();
 
   // 1. ADMINISTRATIVOS (Miran @GUIDE0)
-  if (role == 'AD2' || role == 'AD' || username == 'mdamian') return 'AD';
+  if (role == 'AD2' || role == 'AD' || role == 'ADMIN' || username == 'mdamian') return 'AD';
   
   // 2. GESTORES (Miran @FENV1)
-  if (role == 'GE' || username == 'lburola') return 'GE';
+  if (role == 'GE' || role == 'GESTOR' || role == 'GST' || username == 'lburola') return 'GE';
   
-  // 3. OTROS (Mantener el rol original o 'OP' si es nulo)
+  // 3. OPERADORES
+  if (role == 'OP' || role == 'OPERADOR') return 'OP';
+
   return role.isNotEmpty ? role : 'OP';
 }
 
@@ -147,12 +149,16 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
     _isLoadingMore = true;
 
     final user = _user;
-    final userCode = user?.username;
+    final userCode = (user?.username.isNotEmpty ?? false) ? user!.username : (user?.code ?? '');
     final userRole = normalizeEvidenceUserRole(user);
 
-    if (userCode == null || userCode.isEmpty) {
+    if (userCode.isEmpty) {
       if (mounted) {
-        state = state.copyWith(routes: const AsyncValue.data([]));
+        state = state.copyWith(
+          routes: const AsyncValue.data([]),
+          totalCount: 0,
+          inProgressCount: 0,
+        );
       }
       _isLoadingMore = false;
       return;
@@ -194,11 +200,6 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
         }
         return true;
       }).toList();
-      
-      // Si el servidor envía el total, lo guardamos.
-      if (response.totalCount >= 0) {
-        _safeSetState(state.copyWith(totalCount: response.totalCount));
-      }
 
       if (newRoutes.isEmpty) {
         _hasMore = false;
@@ -218,10 +219,13 @@ class PendingRoutesNotifier extends StateNotifier<PendingRoutesState> {
 
       if (_allRoutes.isNotEmpty) {
         _updateStateWithRoutes();
-        
       } else {
         if (mounted) {
-          state = state.copyWith(routes: const AsyncValue.data([]));
+          state = state.copyWith(
+            routes: const AsyncValue.data([]),
+            totalCount: 0,
+            inProgressCount: 0,
+          );
         }
       }
     } catch (e, stack) {

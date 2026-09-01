@@ -118,7 +118,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           child: BottomNavigationBar(
             currentIndex: _calculateSelectedIndex(context),
             onTap: (index) => _onItemTapped(index, context),
-            items: const [
+             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.assignment_outlined),
                 activeIcon: Icon(Icons.assignment),

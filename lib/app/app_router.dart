@@ -8,6 +8,9 @@ import '../features/auth/presentation/auth_provider.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/checklist/checklist_history_screen.dart';
 import '../features/checklist/checklist_screen.dart';
+import '../features/dispersion/presentation/dispersion_request_screen.dart';
+import '../features/dispersion/presentation/card_scanner_screen.dart';
+import '../features/dispersion/presentation/dispersion_success_screen.dart';
 import '../features/home/dashboard_screen.dart';
 import '../features/home/pending_routes/home_screen.dart';
 import '../features/home/pending_routes/os_capture/os_capture_screen.dart';
@@ -140,6 +143,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               );
             },
           ),
+          GoRoute(
+            path: '/dispersion-request',
+            name: 'dispersion_request',
+            builder: (context, state) => const DispersionRequestScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -205,6 +213,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'notificaciones',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/card-scanner',
+        name: 'card_scanner',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const CardScannerScreen(),
+      ),
+      GoRoute(
+        path: '/dispersion-success',
+        name: 'dispersion_success',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return DispersionSuccessScreen(
+            tarjeta: extra['tarjeta'] ?? '•••• •••• •••• 0000',
+            ruta: extra['ruta'] ?? 'RUTA GENERAL',
+          );
+        },
       ),
     ],
   );

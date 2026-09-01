@@ -30,7 +30,15 @@ class IncidentService {
     String? photoFileName,
   }) async {
     final token = await storage.getToken();
-    final uri = Uri.parse('${baseUrl.isEmpty ? AppApiConfig.evidenciasBaseUrl : baseUrl}/incidencias');
+    final activeBaseUrl = baseUrl.isEmpty ? AppApiConfig.evidenciasBaseUrl : baseUrl;
+    final uri = Uri.parse('$activeBaseUrl/incidencias');
+    final baseUri = Uri.parse(activeBaseUrl);
+    final uploadUri = Uri(
+      scheme: baseUri.scheme,
+      host: baseUri.host,
+      port: baseUri.port,
+      path: '/seloasa/subida-imagen',
+    );
     final photos = <Map<String, dynamic>>[];
 
     if (photoBytes != null && photoBytes.isNotEmpty) {
@@ -41,7 +49,7 @@ class IncidentService {
 
       try {
         await http.post(
-          Uri.parse('https://rutas.seloasa.com.mx/seloasa/subida-imagen'),
+          uploadUri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'ordenServicio': 'INC_$userCode',

@@ -37,9 +37,9 @@ class PhotoPicker {
   static Future<File?> pickFromSystemCamera() async {
     final XFile? taken = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 45,
-      maxWidth: 1024,
-      maxHeight: 1024,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (taken == null) return null;
     return File(taken.path);
@@ -49,9 +49,9 @@ class PhotoPicker {
   static Future<File?> pickFromGallery() async {
     final XFile? picked = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 45,
-      maxWidth: 1024,
-      maxHeight: 1024,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (picked == null) return null;
     return File(picked.path);

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/app_api_config.dart';
 import '../../auth/data/token_storage.dart';
@@ -28,8 +29,9 @@ final guiasPaqueteriaProvider = FutureProvider<List<RouteModel>>((ref) async {
   }
 
   // Llamamos al servicio estándar pero forzando el rol de GESTOR
-  return service.getPendingRoutes(
+  final response = await service.getPendingRoutes(
     userCode: userCode,
     userRole: 'GESTOR',
   );
+  return response.routes;
 });

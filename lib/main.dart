@@ -7,9 +7,11 @@ import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import 'package:seloasa_evidencias/app/theme_provider.dart';
 import 'package:seloasa_evidencias/app/app_router.dart';
 import 'package:seloasa_evidencias/core/services/widget_service.dart';
+import 'package:seloasa_evidencias/core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   
   initializeDateFormatting('es_MX', null).then((_) {
     runApp(
