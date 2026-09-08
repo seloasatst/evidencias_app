@@ -33,6 +33,7 @@ class KbDocumentPreviewDialog extends StatefulWidget {
 class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   // PDF State
   String? _localPdfPath;
+  PDFViewController? _pdfViewController;
   int _pdfTotalPages = 0;
   int _pdfCurrentPage = 0;
   bool _isPdfReady = false;
@@ -43,6 +44,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
 
   // Common State
   bool _isLoading = true;
+  bool _isDownloading = false;
   String? _errorMessage;
 
   @override
@@ -55,6 +57,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _isPdfReady = false;
     });
 
     if (widget.attachment.isPdf) {
@@ -95,7 +98,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
       } else {
         if (mounted) {
           setState(() {
-            _errorMessage = 'Error ${response.statusCode} al descargar el archivo.';
+            _errorMessage = 'Error ${response.statusCode} al obtener el archivo.';
             _isLoading = false;
           });
         }
@@ -205,19 +208,38 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     return rawUrl;
   }
 
-  Future<void> _openExternal() async {
+  Future<void> _downloadFile() async {
     final rawUrl = widget.attachment.fullUrl.trim();
     if (rawUrl.isEmpty) return;
-    final uri = Uri.tryParse(rawUrl);
-    if (uri != null) {
-      try {
+
+    setState(() => _isDownloading = true);
+
+    try {
+      final uri = Uri.tryParse(rawUrl);
+      if (uri != null) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("No se pudo abrir externamente: $e")),
-          );
-        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Descargando ${widget.attachment.displayName}..."),
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al iniciar descarga: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloading = false);
       }
     }
   }
@@ -231,7 +253,6 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     IconData fileIcon = Icons.insert_drive_file_outlined;
     Color iconColor = AppColors.primaryGreen;
     String typeLabel = "Documento";
-    String badgeText = "DOC";
 
     final name = att.displayName.toLowerCase();
     final mime = att.mimeType.toLowerCase();
@@ -240,32 +261,27 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
       fileIcon = Icons.picture_as_pdf_rounded;
       iconColor = Colors.redAccent;
       typeLabel = "Documento PDF";
-      badgeText = "PDF";
     } else if (att.isImage) {
       fileIcon = Icons.image_rounded;
       iconColor = Colors.blueAccent;
       typeLabel = "Imagen";
-      badgeText = "IMG";
     } else if (name.endsWith('.xls') || name.endsWith('.xlsx') || mime.contains('spreadsheet') || mime.contains('excel')) {
       fileIcon = Icons.table_chart_rounded;
       iconColor = Colors.green;
       typeLabel = "Hoja de cálculo";
-      badgeText = "XLS";
     } else if (name.endsWith('.doc') || name.endsWith('.docx') || mime.contains('word')) {
       fileIcon = Icons.description_rounded;
       iconColor = Colors.indigo;
       typeLabel = "Documento Word";
-      badgeText = "DOC";
     } else if (name.endsWith('.zip') || name.endsWith('.rar')) {
       fileIcon = Icons.folder_zip_rounded;
       iconColor = Colors.amber.shade800;
       typeLabel = "Archivo Comprimido";
-      badgeText = "ZIP";
     }
 
     return Dialog(
       backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
@@ -307,34 +323,14 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                             color: isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              "$typeLabel • ${att.formattedSize}",
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                color: isDark ? Colors.white54 : AppColors.textSecondary,
-                              ),
-                            ),
-                            if (att.isPdf && _isPdfReady && _pdfTotalPages > 0) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  "Pág. ${_pdfCurrentPage + 1} de $_pdfTotalPages",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.redAccent,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                        Text(
+                          "$typeLabel • ${att.formattedSize}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: isDark ? Colors.white54 : AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -344,12 +340,6 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                     color: isDark ? Colors.white70 : AppColors.textSecondary,
                     tooltip: "Recargar",
                     onPressed: _loadFile,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                    color: isDark ? Colors.white70 : AppColors.textSecondary,
-                    tooltip: "Abrir fuera de la app",
-                    onPressed: _openExternal,
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 22),
@@ -373,8 +363,8 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
             // Main Preview Area
             Expanded(
               child: Container(
-                color: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
-                child: _buildBody(isDark, fileIcon, iconColor, badgeText),
+                color: isDark ? const Color(0xFF121212) : const Color(0xFFF0F2F5),
+                child: _buildBody(isDark, fileIcon, iconColor),
               ),
             ),
 
@@ -390,6 +380,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
               child: Row(
                 children: [
                   Expanded(
+                    flex: 1,
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
@@ -406,12 +397,19 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
+                    flex: 2,
                     child: ElevatedButton.icon(
-                      onPressed: _openExternal,
-                      icon: const Icon(Icons.open_in_browser_rounded, size: 16),
+                      onPressed: _isDownloading ? null : _downloadFile,
+                      icon: _isDownloading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.download_rounded, size: 18),
                       label: Text(
-                        "ABRIR ENLACE",
-                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700),
+                        "DESCARGAR ARCHIVO",
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGreen,
@@ -430,7 +428,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     );
   }
 
-  Widget _buildBody(bool isDark, IconData fileIcon, Color iconColor, String badgeText) {
+  Widget _buildBody(bool isDark, IconData fileIcon, Color iconColor) {
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -458,14 +456,28 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadFile,
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text("Reintentar"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentOrange,
-                  foregroundColor: Colors.white,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _loadFile,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text("Reintentar"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentOrange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    onPressed: _downloadFile,
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: const Text("Descargar"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -494,45 +506,125 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     }
 
     if (widget.attachment.isPdf && _localPdfPath != null) {
-      return PDFView(
-        filePath: _localPdfPath,
-        enableSwipe: true,
-        swipeHorizontal: false,
-        autoSpacing: true,
-        pageFling: true,
-        pageSnap: true,
-        fitPolicy: FitPolicy.BOTH,
-        preventLinkNavigation: false,
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade200,
-        onRender: (pages) {
-          if (mounted) {
-            setState(() {
-              _pdfTotalPages = pages ?? 0;
-              _isPdfReady = true;
-            });
-          }
-        },
-        onError: (error) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = error.toString();
-            });
-          }
-        },
-        onPageError: (page, error) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = "Error en página $page: $error";
-            });
-          }
-        },
-        onPageChanged: (page, total) {
-          if (mounted) {
-            setState(() {
-              _pdfCurrentPage = page ?? 0;
-            });
-          }
-        },
+      return Stack(
+        children: [
+          PDFView(
+            filePath: _localPdfPath,
+            enableSwipe: true,
+            swipeHorizontal: false,
+            autoSpacing: true,
+            pageFling: true,
+            pageSnap: true,
+            fitPolicy: FitPolicy.BOTH,
+            preventLinkNavigation: false,
+            backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade200,
+            onViewCreated: (PDFViewController controller) {
+              _pdfViewController = controller;
+            },
+            onRender: (pages) {
+              if (mounted) {
+                setState(() {
+                  _pdfTotalPages = pages ?? 0;
+                  _isPdfReady = true;
+                });
+              }
+            },
+            onError: (error) {
+              if (mounted) {
+                setState(() {
+                  _errorMessage = error.toString();
+                });
+              }
+            },
+            onPageError: (page, error) {
+              if (mounted) {
+                setState(() {
+                  _errorMessage = "Error en página $page: $error";
+                });
+              }
+            },
+            onPageChanged: (page, total) {
+              if (mounted) {
+                setState(() {
+                  _pdfCurrentPage = page ?? 0;
+                });
+              }
+            },
+          ),
+
+          // Floating Clean Pagination Pill at Bottom Center
+          if (_isPdfReady && _pdfTotalPages > 0)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _pdfCurrentPage > 0
+                            ? () {
+                                final prev = _pdfCurrentPage - 1;
+                                _pdfViewController?.setPage(prev);
+                              }
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.chevron_left_rounded,
+                            size: 18,
+                            color: _pdfCurrentPage > 0 ? Colors.white : Colors.white30,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        "${_pdfCurrentPage + 1} / $_pdfTotalPages",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: _pdfCurrentPage < _pdfTotalPages - 1
+                            ? () {
+                                final next = _pdfCurrentPage + 1;
+                                _pdfViewController?.setPage(next);
+                              }
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: _pdfCurrentPage < _pdfTotalPages - 1 ? Colors.white : Colors.white30,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
     }
 
@@ -540,7 +632,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
       return _buildImageViewer(widget.attachment, isDark);
     }
 
-    return _buildWebViewer(isDark, fileIcon, iconColor, badgeText);
+    return _buildWebViewer(isDark, fileIcon, iconColor);
   }
 
   Widget _buildImageViewer(KbAttachment att, bool isDark) {
@@ -575,9 +667,9 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: _openExternal,
-                  icon: const Icon(Icons.open_in_browser_rounded, size: 16),
-                  label: const Text("Abrir imagen"),
+                  onPressed: _downloadFile,
+                  icon: const Icon(Icons.download_rounded, size: 16),
+                  label: const Text("Descargar imagen"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentOrange,
                     foregroundColor: Colors.white,
@@ -591,7 +683,7 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     );
   }
 
-  Widget _buildWebViewer(bool isDark, IconData fileIcon, Color iconColor, String badgeText) {
+  Widget _buildWebViewer(bool isDark, IconData fileIcon, Color iconColor) {
     if (_webViewController == null) {
       return Center(
         child: CircularProgressIndicator(
