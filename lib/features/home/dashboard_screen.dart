@@ -97,8 +97,98 @@ class DashboardScreen extends ConsumerWidget {
             _buildSectionHeader("Rutas actuales"),
             const SizedBox(height: 12),
             _buildIncidentsWidget(context),
+            const SizedBox(height: 24),
+            _buildSectionHeader("Ayuda y Documentación"),
+            const SizedBox(height: 12),
+            _buildKnowledgeBaseWidget(context),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildKnowledgeBaseWidget(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 10,
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.menu_book_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Base de Conocimientos",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Guías de inicio de ruta, manuales de carta porte, evidencias y más.",
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: isDark ? Colors.white60 : AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.pushNamed('knowledge_base'),
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: Text(
+                "EXPLORAR GUÍAS Y MANUALES",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

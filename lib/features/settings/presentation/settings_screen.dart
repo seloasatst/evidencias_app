@@ -90,13 +90,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const Divider(height: 40),
-          _buildSectionHeader("Cuenta"),
+          _buildSectionHeader("Soporte y Ayuda"),
           const SizedBox(height: 16),
-          _buildSettingsTile(
-            icon: Icons.person_outline,
-            title: "Sesión persistente",
-            subtitle: "Activo por 30 días",
-            trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+          InkWell(
+            onTap: () => context.pushNamed('knowledge_base'),
+            borderRadius: BorderRadius.circular(16),
+            child: _buildSettingsTile(
+              icon: Icons.menu_book_rounded,
+              title: "Base de Conocimientos",
+              subtitle: "Guías, tutoriales y preguntas frecuentes",
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+            ),
           ),
           const SizedBox(height: 40),
           _buildLogoutButton(),

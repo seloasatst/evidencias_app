@@ -16,6 +16,8 @@ import '../features/home/pending_routes/home_screen.dart';
 import '../features/home/pending_routes/os_capture/os_capture_screen.dart';
 import '../features/home/pending_routes/route_detail/route_detail_screen.dart';
 import '../features/incidents/presentation/incident_report_screen.dart';
+import '../features/knowledge_base/presentation/kb_article_detail_screen.dart';
+import '../features/knowledge_base/presentation/knowledge_base_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import 'app_shell.dart';
@@ -148,6 +150,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'dispersion_request',
             builder: (context, state) => const DispersionRequestScreen(),
           ),
+          GoRoute(
+            path: '/kb',
+            name: 'knowledge_base',
+            builder: (context, state) => const KnowledgeBaseScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -219,6 +226,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'card_scanner',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CardScannerScreen(),
+      ),
+      GoRoute(
+        path: '/kb/article/:idOrSlug',
+        name: 'kb_article_detail',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final idOrSlug = state.pathParameters['idOrSlug'] ?? '';
+          return KbArticleDetailScreen(idOrSlug: idOrSlug);
+        },
       ),
       GoRoute(
         path: '/dispersion-success',

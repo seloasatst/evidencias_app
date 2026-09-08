@@ -28,6 +28,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/evidencias')) return 0;
     if (location.startsWith('/home')) return 1;
+    if (location.startsWith('/kb')) return 2;
     return 1;
   }
 
@@ -38,6 +39,9 @@ class _AppShellState extends ConsumerState<AppShell> {
         break;
       case 1:
         context.goNamed('home');
+        break;
+      case 2:
+        context.goNamed('knowledge_base');
         break;
     }
   }
@@ -88,6 +92,13 @@ class _AppShellState extends ConsumerState<AppShell> {
                       IconButton(
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(8),
+                        icon: const Icon(Icons.help_outline_rounded, color: AppColors.white, size: 22),
+                        tooltip: 'Base de Conocimientos',
+                        onPressed: () => context.pushNamed('knowledge_base'),
+                      ),
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(8),
                         icon: const Icon(Icons.warning_amber_rounded, color: AppColors.white, size: 22),
                         onPressed: () => context.pushNamed('incident_report'),
                       ),
@@ -118,7 +129,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           child: BottomNavigationBar(
             currentIndex: _calculateSelectedIndex(context),
             onTap: (index) => _onItemTapped(index, context),
-             items: const [
+            items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.assignment_outlined),
                 activeIcon: Icon(Icons.assignment),
@@ -128,6 +139,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                 icon: Icon(Icons.home_outlined),
                 activeIcon: Icon(Icons.home),
                 label: 'Inicio',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.menu_book_outlined),
+                activeIcon: Icon(Icons.menu_book_rounded),
+                label: 'Conocimiento',
               ),
             ],
             selectedLabelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500),
