@@ -1,16 +1,21 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../../core/services/screen_security_service.dart';
 import '../../../../ui/theme/app_colors.dart';
+import '../../../auth/presentation/auth_provider.dart';
 import '../../data/models/kb_attachment.dart';
+import 'kb_watermark_overlay.dart';
 
-class KbDocumentPreviewDialog extends StatefulWidget {
+class KbDocumentPreviewDialog extends ConsumerStatefulWidget {
   final KbAttachment attachment;
 
   const KbDocumentPreviewDialog({
@@ -27,10 +32,10 @@ class KbDocumentPreviewDialog extends StatefulWidget {
   }
 
   @override
-  State<KbDocumentPreviewDialog> createState() => _KbDocumentPreviewDialogState();
+  ConsumerState<KbDocumentPreviewDialog> createState() => _KbDocumentPreviewDialogState();
 }
 
-class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
+class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialog> {
   // PDF State
   String? _localPdfPath;
   PDFViewController? _pdfViewController;
@@ -50,7 +55,14 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   @override
   void initState() {
     super.initState();
+    ScreenSecurityService.enableSecure();
     _loadFile();
+  }
+
+  @override
+  void dispose() {
+    ScreenSecurityService.disableSecure();
+    super.dispose();
   }
 
   void _loadFile() {
@@ -70,7 +82,10 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   }
 
   Future<void> _downloadAndPreparePdf() async {
-    final url = widget.attachment.fullUrl.trim();
+    final url = widget.attachment.previewFullUrl.isNotEmpty
+        ? widget.attachment.previewFullUrl
+        : widget.attachment.fullUrl.trim();
+
     if (url.isEmpty) {
       if (mounted) {
         setState(() {
@@ -180,7 +195,9 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   }
 
   String _getPreviewUrl() {
-    final rawUrl = widget.attachment.fullUrl.trim();
+    final rawUrl = widget.attachment.previewFullUrl.isNotEmpty
+        ? widget.attachment.previewFullUrl
+        : widget.attachment.fullUrl.trim();
     if (rawUrl.isEmpty) return '';
 
     if (rawUrl.contains('sharepoint.com') ||
@@ -209,6 +226,16 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   }
 
   Future<void> _downloadFile() async {
+    if (!widget.attachment.isDownloadable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Este documento es de solo lectura y no permite descargas."),
+          backgroundColor: Colors.amber,
+        ),
+      );
+      return;
+    }
+
     final rawUrl = widget.attachment.fullUrl.trim();
     if (rawUrl.isEmpty) return;
 
@@ -249,6 +276,9 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final att = widget.attachment;
     final screenSize = MediaQuery.of(context).size;
+    final user = ref.watch(authStateProvider).user;
+    final todayStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    final watermarkText = '${user?.name ?? user?.username ?? "SELOASA"} • ${user?.code ?? ""} • $todayStr • CONFIDENCIAL';
 
     IconData fileIcon = Icons.insert_drive_file_outlined;
     Color iconColor = AppColors.primaryGreen;
@@ -323,14 +353,36 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                             color: isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
-                        Text(
-                          "$typeLabel • ${att.formattedSize}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: isDark ? Colors.white54 : AppColors.textSecondary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              "$typeLabel • ${att.formattedSize}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: isDark ? Colors.white54 : AppColors.textSecondary,
+                              ),
+                            ),
+                            if (!att.isDownloadable) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  "SOLO LECTURA",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -360,11 +412,15 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                 valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentOrange),
               ),
 
-            // Main Preview Area
+            // Main Preview Area with Watermark
             Expanded(
-              child: Container(
-                color: isDark ? const Color(0xFF121212) : const Color(0xFFF0F2F5),
-                child: _buildBody(isDark, fileIcon, iconColor),
+              child: KbWatermarkOverlay(
+                text: watermarkText,
+                opacity: isDark ? 0.12 : 0.07,
+                child: Container(
+                  color: isDark ? const Color(0xFF121212) : const Color(0xFFF0F2F5),
+                  child: _buildBody(isDark, fileIcon, iconColor),
+                ),
               ),
             ),
 
@@ -396,29 +452,66 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: _isDownloading ? null : _downloadFile,
-                      icon: _isDownloading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.download_rounded, size: 18),
-                      label: Text(
-                        "DESCARGAR ARCHIVO",
-                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700),
+                  if (att.isDownloadable)
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: _isDownloading ? null : _downloadFile,
+                        icon: _isDownloading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.download_rounded, size: 16),
+                        label: Text(
+                          _isDownloading ? "DESCARGANDO..." : "DESCARGAR",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    )
+                  else
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.amber.withValues(alpha: 0.15) : const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.amber.shade300),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_outline_rounded, size: 16, color: Colors.amber.shade800),
+                            const SizedBox(width: 6),
+                            Text(
+                              "SOLO LECTURA",
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.amber.shade800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -436,10 +529,10 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade400),
+              Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade300),
               const SizedBox(height: 12),
               Text(
-                "Error al cargar el documento",
+                "No se pudo cargar la vista previa",
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -451,33 +544,19 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                 _errorMessage!,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: isDark ? Colors.white60 : AppColors.textSecondary,
+                  fontSize: 11,
+                  color: isDark ? Colors.white70 : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _loadFile,
-                    icon: const Icon(Icons.refresh_rounded, size: 16),
-                    label: const Text("Reintentar"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentOrange,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  OutlinedButton.icon(
-                    onPressed: _downloadFile,
-                    icon: const Icon(Icons.download_rounded, size: 16),
-                    label: const Text("Descargar"),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? Colors.white : AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+              ElevatedButton.icon(
+                onPressed: _loadFile,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text("Reintentar"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
@@ -485,15 +564,17 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
       );
     }
 
-    if (_isLoading && _localPdfPath == null && widget.attachment.isPdf) {
+    if (_isLoading) {
       return Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: AppColors.accentOrange),
-            const SizedBox(height: 14),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+            ),
+            const SizedBox(height: 16),
             Text(
-              "Cargando documento PDF...",
+              "Preparando vista previa...",
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -636,12 +717,14 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
   }
 
   Widget _buildImageViewer(KbAttachment att, bool isDark) {
+    final imgUrl = att.previewFullUrl.isNotEmpty ? att.previewFullUrl : att.fullUrl;
+
     return Center(
       child: InteractiveViewer(
         minScale: 0.5,
         maxScale: 4.0,
         child: Image.network(
-          att.fullUrl,
+          imgUrl,
           fit: BoxFit.contain,
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
@@ -665,16 +748,18 @@ class _KbDocumentPreviewDialogState extends State<KbDocumentPreviewDialog> {
                     color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _downloadFile,
-                  icon: const Icon(Icons.download_rounded, size: 16),
-                  label: const Text("Descargar imagen"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentOrange,
-                    foregroundColor: Colors.white,
+                if (att.isDownloadable) ...[
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _downloadFile,
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: const Text("Descargar imagen"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentOrange,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

@@ -5,16 +5,20 @@ class KbAttachment {
   final String fileName;
   final String originalName;
   final String filePath;
+  final String previewPath;
   final int fileSize;
   final String mimeType;
+  final bool isDownloadable;
 
   KbAttachment({
     required this.id,
     required this.fileName,
     this.originalName = '',
     required this.filePath,
+    this.previewPath = '',
     required this.fileSize,
     required this.mimeType,
+    this.isDownloadable = true,
   });
 
   String get displayName => originalName.isNotEmpty ? originalName : fileName;
@@ -37,6 +41,13 @@ class KbAttachment {
             '')
         .toString();
 
+    final rawPreview = (json['preview_url'] ??
+            json['PREVIEW_URL'] ??
+            json['preview_path'] ??
+            json['PREVIEW_PATH'] ??
+            '')
+        .toString();
+
     final rawOrig = (json['ORIGINAL_NAME'] ?? json['original_name'] ?? '').toString();
     final rawName = (json['FILE_NAME'] ??
             json['file_name'] ??
@@ -51,13 +62,31 @@ class KbAttachment {
 
     final id = _parseInt(json['ID'] ?? json['id']);
 
+    final isDlRaw = json['is_downloadable'] ?? json['IS_DOWNLOADABLE'];
+    bool isDownloadable = true;
+    if (isDlRaw != null) {
+      if (isDlRaw is bool) {
+        isDownloadable = isDlRaw;
+      } else if (isDlRaw is num) {
+        isDownloadable = isDlRaw.toInt() == 1;
+      } else if (isDlRaw.toString() == '0' || isDlRaw.toString().toLowerCase() == 'false') {
+        isDownloadable = false;
+      }
+    } else if (rawPath.isEmpty && rawPreview.isNotEmpty) {
+      isDownloadable = false;
+    }
+
+    final finalPath = rawPath.isNotEmpty ? rawPath : rawPreview;
+
     return KbAttachment(
       id: id,
-      fileName: rawName.isNotEmpty ? rawName : (rawPath.isNotEmpty ? rawPath.split('/').last : 'archivo_$id'),
+      fileName: rawName.isNotEmpty ? rawName : (finalPath.isNotEmpty ? finalPath.split('/').last : 'archivo_$id'),
       originalName: rawOrig,
-      filePath: rawPath,
+      filePath: finalPath,
+      previewPath: rawPreview,
       fileSize: _parseInt(json['FILE_SIZE'] ?? json['file_size'] ?? json['size'] ?? json['SIZE'] ?? 0),
       mimeType: (json['FILE_TYPE'] ?? json['file_type'] ?? json['MIME_TYPE'] ?? json['mime_type'] ?? json['type'] ?? json['TYPE'] ?? json['content_type'] ?? 'application/octet-stream').toString(),
+      isDownloadable: isDownloadable,
     );
   }
 
@@ -79,10 +108,38 @@ class KbAttachment {
     }
 
     if (id > 0) {
-      return '$base/kb/attachments/$id/download';
+      if (isDownloadable) {
+        return '$base/kb/attachments/$id/download';
+      } else {
+        return '$base/kb/attachments/$id/preview';
+      }
     }
 
     return '';
+  }
+
+  String get previewFullUrl {
+    final prev = previewPath.trim();
+    if (prev.isNotEmpty) {
+      if (prev.startsWith('http://') || prev.startsWith('https://')) {
+        return prev;
+      }
+      final base = AppApiConfig.evidenciasBaseUrl;
+      final uri = Uri.parse(base);
+      final portStr = (uri.hasPort && uri.port != 80 && uri.port != 443) ? ':${uri.port}' : (uri.port != 0 && uri.port != 80 && uri.port != 443 ? ':${uri.port}' : '');
+      final root = '${uri.scheme}://${uri.host}$portStr';
+      if (prev.startsWith('/')) {
+        return '$root$prev';
+      }
+      return '$root/$prev';
+    }
+
+    if (id > 0) {
+      final base = AppApiConfig.evidenciasBaseUrl;
+      return '$base/kb/attachments/$id/preview';
+    }
+
+    return fullUrl;
   }
 
   bool get isImage {
@@ -129,4 +186,3 @@ class KbAttachment {
     return int.tryParse(value.toString()) ?? 0;
   }
 }
-

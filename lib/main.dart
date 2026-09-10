@@ -9,9 +9,28 @@ import 'package:seloasa_evidencias/app/app_router.dart';
 import 'package:seloasa_evidencias/core/services/widget_service.dart';
 import 'package:seloasa_evidencias/core/services/notification_service.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:seloasa_evidencias/core/services/fcm_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
+
+  // 1. Inicializar Firebase Core
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Error inicializando Firebase: $e');
+  }
+
+  // 2. Inicializar Servicio de Notificaciones Locales
+  await NotificationService.init(
+    onTap: (payload) => FcmService.handleLocalPayload(payload),
+  );
+
+  // 3. Inicializar Firebase Cloud Messaging (FCM)
+  await FcmService.init(navigatorKey: rootNavigatorKey);
   
   initializeDateFormatting('es_MX', null).then((_) {
     runApp(

@@ -7,7 +7,11 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static Future<void> init() async {
+  static void Function(String? payload)? _onTapNotification;
+
+  static Future<void> init({void Function(String? payload)? onTap}) async {
+    _onTapNotification = onTap;
+
     // 1. Configuración para Android (usa el icono por defecto de launcher)
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -29,6 +33,11 @@ class NotificationService {
     try {
       await _notificationsPlugin.initialize(
         settings: initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          if (_onTapNotification != null) {
+            _onTapNotification!(response.payload);
+          }
+        },
       );
       
       // Solicitar permisos explícitamente en Android 13+
@@ -69,11 +78,15 @@ class NotificationService {
     required int id,
     required String title,
     required String body,
+    String channelId = 'kb_channel',
+    String channelName = 'Base de Conocimientos',
+    String channelDescription = 'Notificaciones de artículos y procedimientos',
+    String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'dispersion_channel',
-      'Dispersiones',
-      channelDescription: 'Canal de notificaciones para solicitudes de dispersión',
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
@@ -86,7 +99,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -97,6 +110,7 @@ class NotificationService {
         title: title,
         body: body,
         notificationDetails: platformDetails,
+        payload: payload,
       );
     } catch (e) {
       debugPrint('Error mostrando notificación local: $e');
