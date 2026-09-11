@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/services/screen_security_service.dart';
 import '../../../ui/theme/app_colors.dart';
@@ -14,7 +13,6 @@ import 'kb_providers.dart';
 import 'widgets/kb_document_preview_dialog.dart';
 import 'widgets/kb_html_content.dart';
 import 'widgets/kb_icon_helper.dart';
-import 'widgets/kb_watermark_overlay.dart';
 
 class KbArticleDetailScreen extends ConsumerStatefulWidget {
   final String idOrSlug;
@@ -30,6 +28,8 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
   bool _isSubmittingFeedback = false;
   final List<KbComment> _localComments = [];
   bool _commentsInitialized = false;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _headingKeys = {};
 
   @override
   void initState() {
@@ -40,6 +40,7 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
   @override
   void dispose() {
     ScreenSecurityService.disableSecure();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -47,9 +48,6 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final articleAsync = ref.watch(kbArticleDetailProvider(widget.idOrSlug));
-    final user = ref.watch(authStateProvider).user;
-    final todayStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    final watermarkText = '${user?.name ?? user?.username ?? "SELOASA"} • ${user?.code ?? ""} • $todayStr • CONFIDENCIAL';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -72,14 +70,17 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
             _commentsInitialized = true;
           }
 
-          return KbWatermarkOverlay(
-            text: watermarkText,
-            opacity: isDark ? 0.09 : 0.05,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          final headings = KbHtmlContent.extractHeadings(article.content);
+          for (final h in headings) {
+            _headingKeys.putIfAbsent(h, () => GlobalKey());
+          }
+
+          return SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                   // Category & Date Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -147,9 +148,12 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
                   // Author & Date metadata
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: AppColors.accentOrange.withValues(alpha: 0.2),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentOrange.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
                         child: const Icon(
                           Icons.person_rounded,
                           size: 14,
@@ -157,24 +161,44 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        article.authorName,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : AppColors.textPrimary,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                article.authorName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white70 : AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (article.createdAt.isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                child: Text(
+                                  "•",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.white38 : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                _formatArticleDate(article.createdAt),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white38 : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      if (article.createdAt.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          "• ${article.createdAt.split(' ').first}",
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: isDark ? Colors.white38 : AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
 
@@ -234,7 +258,11 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
 
                   // Content HTML / Body
                   if (article.content != null && article.content!.isNotEmpty)
-                    KbHtmlContent(html: article.content!)
+                    KbHtmlContent(
+                      html: article.content!,
+                      headingKeys: _headingKeys,
+                      onHeadingTap: _scrollToHeading,
+                    )
                   else
                     Text(
                       "No hay contenido disponible para esta guía.",
@@ -272,8 +300,7 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
                   const SizedBox(height: 40),
                 ],
               ),
-            ),
-          );
+            );
         },
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.accentOrange),
@@ -712,7 +739,7 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
                 ),
               ),
               Text(
-                comment.createdAt.split(' ').first,
+                _formatArticleDate(comment.createdAt),
                 style: GoogleFonts.poppins(
                   fontSize: 10,
                   color: isDark ? Colors.white38 : AppColors.textSecondary,
@@ -732,5 +759,59 @@ class _KbArticleDetailScreenState extends ConsumerState<KbArticleDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _formatArticleDate(String rawDate) {
+    if (rawDate.trim().isEmpty) return '';
+    final sanitized = rawDate.replaceAll(RegExp(r'[^\d\-T :.]'), '').trim();
+    try {
+      final mainPart = sanitized.split('.').first.replaceAll('T', ' ');
+      final dateParts = mainPart.split(' ').first.split('-');
+      if (dateParts.length == 3) {
+        final year = int.tryParse(dateParts[0]);
+        final month = int.tryParse(dateParts[1]);
+        final day = int.tryParse(dateParts[2]);
+        if (year != null && month != null && day != null) {
+          const months = [
+            'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+            'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+          ];
+          final monthName = (month >= 1 && month <= 12) ? months[month - 1] : '$month';
+          return '$day $monthName $year';
+        }
+      }
+      final dt = DateTime.tryParse(sanitized);
+      if (dt != null) {
+        const months = [
+          'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+          'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+        ];
+        final monthName = months[dt.month - 1];
+        return '${dt.day} $monthName ${dt.year}';
+      }
+    } catch (_) {}
+    return sanitized.split(' ').first;
+  }
+
+  void _scrollToHeading(String title) {
+    final cleanTarget = title.toLowerCase().replaceAll(RegExp(r'^\d+[\.\-\s]+'), '').trim();
+    GlobalKey? matchedKey = _headingKeys[title];
+    if (matchedKey == null) {
+      for (final entry in _headingKeys.entries) {
+        final cleanKey = entry.key.toLowerCase().replaceAll(RegExp(r'^\d+[\.\-\s]+'), '').trim();
+        if (cleanKey.contains(cleanTarget) || cleanTarget.contains(cleanKey)) {
+          matchedKey = entry.value;
+          break;
+        }
+      }
+    }
+    if (matchedKey?.currentContext != null) {
+      Scrollable.ensureVisible(
+        matchedKey!.currentContext!,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+        alignment: 0.05,
+      );
+    }
   }
 }

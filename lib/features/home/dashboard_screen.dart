@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../auth/presentation/auth_provider.dart';
+import '../notifications/presentation/notification_inbox_provider.dart';
+import '../sos/presentation/sos_modal.dart';
 import './presentation/route_provider.dart';
 
 /// Proveedor que obtiene la versión de la app desde pubspec.yaml en tiempo de ejecución.
@@ -44,6 +46,8 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final unreadAlerts = ref.watch(notificationInboxProvider).unreadCount.toString();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -84,24 +88,145 @@ class DashboardScreen extends ConsumerWidget {
                     value: inProgressCount,
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: _SummaryCard(
-                    title: "Alertas activas",
-                    value: "0",
+                  child: InkWell(
+                    onTap: () => context.pushNamed('notificaciones'),
+                    borderRadius: BorderRadius.circular(20),
+                    child: _SummaryCard(
+                      title: "Alertas activas",
+                      value: unreadAlerts,
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            _buildSosEmergencyBanner(context, isDark),
             const SizedBox(height: 32),
             _buildSectionHeader("Rutas actuales"),
             const SizedBox(height: 12),
             _buildIncidentsWidget(context),
             const SizedBox(height: 24),
+            _buildSectionHeader("Dispersiones y Viáticos"),
+            const SizedBox(height: 12),
+            _buildDispersionWidget(context),
+            const SizedBox(height: 24),
             _buildSectionHeader("Ayuda y Documentación"),
             const SizedBox(height: 12),
             _buildKnowledgeBaseWidget(context),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSosEmergencyBanner(BuildContext context, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF3E1010), const Color(0xFF200B0B)]
+              : [const Color(0xFFFFECEC), const Color(0xFFFFF5F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.redAccent.withValues(alpha: isDark ? 0.3 : 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: isDark ? 0.2 : 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => SosModal.show(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.shade700,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.emergency_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Botón de Emergencia SOS",
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.red.shade400 : Colors.red.shade800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.red.shade900 : Colors.red.shade700,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              "GPS",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Transmisión directa a Telemétricos",
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.white60 : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: Colors.redAccent,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

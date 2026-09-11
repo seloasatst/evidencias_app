@@ -1,19 +1,18 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../core/services/screen_security_service.dart';
 import '../../../../ui/theme/app_colors.dart';
-import '../../../auth/presentation/auth_provider.dart';
+import '../../../auth/data/token_storage.dart';
 import '../../data/models/kb_attachment.dart';
-import 'kb_watermark_overlay.dart';
 
 class KbDocumentPreviewDialog extends ConsumerStatefulWidget {
   final KbAttachment attachment;
@@ -43,6 +42,9 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
   int _pdfCurrentPage = 0;
   bool _isPdfReady = false;
 
+  // Image State
+  Uint8List? _localImageBytes;
+
   // Web State
   WebViewController? _webViewController;
   double _loadingProgress = 0.0;
@@ -70,14 +72,63 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
       _isLoading = true;
       _errorMessage = null;
       _isPdfReady = false;
+      _localImageBytes = null;
     });
 
     if (widget.attachment.isPdf) {
       _downloadAndPreparePdf();
-    } else if (!widget.attachment.isImage) {
-      _initWebView();
+    } else if (widget.attachment.isImage) {
+      _downloadAndPrepareImage();
     } else {
-      setState(() => _isLoading = false);
+      _initWebView();
+    }
+  }
+
+  Future<void> _downloadAndPrepareImage() async {
+    final url = widget.attachment.previewFullUrl.isNotEmpty
+        ? widget.attachment.previewFullUrl
+        : widget.attachment.fullUrl.trim();
+
+    if (url.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'No se encontró la URL de la imagen.';
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final token = await TokenStorage().getToken();
+      final headers = <String, String>{
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Accept': 'image/*, */*',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (mounted) {
+          setState(() {
+            _localImageBytes = response.bodyBytes;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Error ${response.statusCode} al obtener la imagen.';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'No se pudo cargar la imagen: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -97,7 +148,13 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
     }
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final token = await TokenStorage().getToken();
+      final headers = <String, String>{
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Accept': 'application/pdf, */*',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final bytes = response.bodyBytes;
         final dir = await getTemporaryDirectory();
@@ -276,9 +333,6 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final att = widget.attachment;
     final screenSize = MediaQuery.of(context).size;
-    final user = ref.watch(authStateProvider).user;
-    final todayStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    final watermarkText = '${user?.name ?? user?.username ?? "SELOASA"} • ${user?.code ?? ""} • $todayStr • CONFIDENCIAL';
 
     IconData fileIcon = Icons.insert_drive_file_outlined;
     Color iconColor = AppColors.primaryGreen;
@@ -412,15 +466,11 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
                 valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentOrange),
               ),
 
-            // Main Preview Area with Watermark
+            // Main Preview Area
             Expanded(
-              child: KbWatermarkOverlay(
-                text: watermarkText,
-                opacity: isDark ? 0.12 : 0.07,
-                child: Container(
-                  color: isDark ? const Color(0xFF121212) : const Color(0xFFF0F2F5),
-                  child: _buildBody(isDark, fileIcon, iconColor),
-                ),
+              child: Container(
+                color: isDark ? const Color(0xFF121212) : const Color(0xFFF0F2F5),
+                child: _buildBody(isDark, fileIcon, iconColor),
               ),
             ),
 
@@ -717,6 +767,20 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
   }
 
   Widget _buildImageViewer(KbAttachment att, bool isDark) {
+    if (_localImageBytes != null) {
+      return Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.memory(
+            _localImageBytes!,
+            fit: BoxFit.contain,
+            errorBuilder: (_, error, ___) => _buildImagePreviewError(att, isDark),
+          ),
+        ),
+      );
+    }
+
     final imgUrl = att.previewFullUrl.isNotEmpty ? att.previewFullUrl : att.fullUrl;
 
     return Center(
@@ -732,38 +796,42 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
               child: CircularProgressIndicator(color: AppColors.accentOrange),
             );
           },
-          errorBuilder: (_, error, ___) => Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.broken_image_rounded, size: 54, color: Colors.grey),
-                const SizedBox(height: 12),
-                Text(
-                  "No se pudo cargar la imagen directamente.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : AppColors.textPrimary,
-                  ),
-                ),
-                if (att.isDownloadable) ...[
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _downloadFile,
-                    icon: const Icon(Icons.download_rounded, size: 16),
-                    label: const Text("Descargar imagen"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentOrange,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ],
+          errorBuilder: (_, error, ___) => _buildImagePreviewError(att, isDark),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePreviewError(KbAttachment att, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.broken_image_rounded, size: 54, color: Colors.grey),
+          const SizedBox(height: 12),
+          Text(
+            "No se pudo cargar la imagen directamente.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : AppColors.textPrimary,
             ),
           ),
-        ),
+          if (att.isDownloadable) ...[
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _downloadFile,
+              icon: const Icon(Icons.download_rounded, size: 16),
+              label: const Text("Descargar imagen"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentOrange,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

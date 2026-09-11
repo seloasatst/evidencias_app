@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 import '../features/auth/presentation/auth_provider.dart';
+import '../features/notifications/presentation/notification_inbox_provider.dart';
 import 'package:seloasa_evidencias/core/services/update_service.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -60,55 +61,132 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Perfil de Usuario con Avatar
                   Expanded(
                     child: InkWell(
                       onTap: () => context.pushNamed('configuracion'),
-                      child: Text(
-                        (() {
-                          final user = ref.watch(authStateProvider).user;
-                          if (user == null) return 'SIN SESIÓN';
-                          final displayName = user.name.trim().isNotEmpty ? user.name : user.username;
-                          return displayName.toUpperCase();
-                        })(),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        style: GoogleFonts.poppins(
-                          color: AppColors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (() {
+                                    final user = ref.watch(authStateProvider).user;
+                                    if (user == null) return 'SIN SESIÓN';
+                                    final displayName = user.name.trim().isNotEmpty ? user.name : user.username;
+                                    return displayName.toUpperCase();
+                                  })(),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: GoogleFonts.poppins(
+                                    color: AppColors.white,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                                Text(
+                                  "Seloasa Logística",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withValues(alpha: 0.75),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(8),
-                        icon: const Icon(Icons.help_outline_rounded, color: AppColors.white, size: 22),
-                        tooltip: 'Base de Conocimientos',
-                        onPressed: () => context.pushNamed('knowledge_base'),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(8),
-                        icon: const Icon(Icons.warning_amber_rounded, color: AppColors.white, size: 22),
-                        onPressed: () => context.pushNamed('incident_report'),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(8),
-                        icon: const Icon(Icons.notifications_none_rounded, color: AppColors.white, size: 22),
-                        onPressed: () => context.pushNamed('notificaciones'),
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  // Únicamente la Campana de Notificaciones con Badge
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final unreadCount = ref.watch(notificationInboxProvider).unreadCount;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(10),
+                              icon: const Icon(
+                                Icons.notifications_none_rounded,
+                                color: AppColors.white,
+                                size: 23,
+                              ),
+                              tooltip: 'Notificaciones',
+                              onPressed: () => context.pushNamed('notificaciones'),
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentOrange,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.primaryGreen, width: 1.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.2),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9 ? '9+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

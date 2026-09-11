@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:seloasa_evidencias/features/notifications/data/notification_inbox_service.dart';
+import 'package:seloasa_evidencias/features/notifications/domain/notification_item.dart';
 import 'notification_service.dart';
 
 /// Manejador global para mensajes en segundo plano (cuando la app está cerrada o en background)
@@ -12,6 +14,24 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
     debugPrint('FCM Background message: ${message.messageId} - ${message.notification?.title}');
+
+    // Guardar en la bandeja de entrada local
+    final title = message.notification?.title ?? message.data['title'] ?? 'Aviso Seloasa';
+    final body = message.notification?.body ?? message.data['body'] ?? '';
+    final type = message.data['type']?.toString() ?? 'general';
+
+    final inboxService = NotificationInboxService();
+    await inboxService.saveNotification(
+      NotificationItem(
+        id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        body: body,
+        timestamp: DateTime.now(),
+        type: type,
+        isRead: false,
+        data: message.data,
+      ),
+    );
   } catch (e) {
     debugPrint('Error en firebaseMessagingBackgroundHandler: $e');
   }
@@ -50,9 +70,23 @@ class FcmService {
         sound: true,
       );
 
-      // 3. Suscribirse automáticamente al Topic de Base de Conocimientos
-      await _messaging.subscribeToTopic('kb_articles');
-      debugPrint('FCM: Suscrito con éxito al tema "kb_articles"');
+            // 3. Suscribirse a canales y temas clave de OneRoute / Seloasa
+      final topics = [
+        'kb_articles',
+        'oneroute_general',
+        'oneroute_urgent',
+        'knowledge_base_updates',
+        'dispersion_updates',
+        'incident_alerts',
+      ];
+      for (final topic in topics) {
+        try {
+          await _messaging.subscribeToTopic(topic);
+          debugPrint('FCM: Suscrito con exito al tema "$topic"');
+        } catch (e) {
+          debugPrint('FCM: Error al suscribirse al tema "$topic": $e');
+        }
+      }
 
       // 4. Obtener y loguear token de dispositivo (opcional para debugging o envíos dirigidos)
       final token = await _messaging.getToken();
@@ -88,17 +122,59 @@ class FcmService {
   /// Maneja la recepción de mensaje mientras la app está abierta (foreground)
   static void _handleForegroundMessage(RemoteMessage message) {
     final notification = message.notification;
-    final title = notification?.title ?? message.data['title'] ?? 'Base de Conocimientos';
-    final body = notification?.body ?? message.data['body'] ?? 'Nuevo contenido disponible';
+    final type = message.data['type']?.toString().toLowerCase() ?? 'general';
+
+    String defaultTitle = 'Notificación de Seloasa';
+    String channelId = 'general_channel';
+    String channelName = 'Avisos Generales';
+    String channelDescription = 'Notificaciones operativas generales';
+
+    if (type.contains('dispersion')) {
+      defaultTitle = 'Dispersión Edenred';
+      channelId = 'dispersion_channel';
+      channelName = 'Dispersiones Edenred';
+      channelDescription = 'Notificaciones de solicitudes y saldos Edenred';
+    } else if (type.contains('kb') || type.contains('article')) {
+      defaultTitle = 'Base de Conocimientos';
+      channelId = 'kb_channel';
+      channelName = 'Base de Conocimientos';
+      channelDescription = 'Notificaciones de artículos y procedimientos';
+    } else if (type.contains('incident')) {
+      defaultTitle = 'Reporte de Incidentes';
+      channelId = 'incident_channel';
+      channelName = 'Incidentes';
+      channelDescription = 'Alertas y seguimiento de incidentes en ruta';
+    } else if (type.contains('route') || type.contains('checklist')) {
+      defaultTitle = 'Rutas y Checklists';
+      channelId = 'routes_channel';
+      channelName = 'Rutas y Checklists';
+      channelDescription = 'Asignación de rutas y recordatorios de inspección';
+    }
+
+    final title = notification?.title ?? message.data['title'] ?? defaultTitle;
+    final body = notification?.body ?? message.data['body'] ?? 'Nuevo mensaje operativo disponible';
     final payload = jsonEncode(message.data);
+
+    // Guardar en la bandeja local
+    NotificationInboxService().saveNotification(
+      NotificationItem(
+        id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        body: body,
+        timestamp: DateTime.now(),
+        type: type,
+        isRead: false,
+        data: message.data,
+      ),
+    );
 
     NotificationService.showLocalNotification(
       id: message.hashCode,
       title: title,
       body: body,
-      channelId: 'kb_channel',
-      channelName: 'Base de Conocimientos',
-      channelDescription: 'Notificaciones de artículos y procedimientos',
+      channelId: channelId,
+      channelName: channelName,
+      channelDescription: channelDescription,
       payload: payload,
     );
   }
@@ -111,13 +187,76 @@ class FcmService {
       return;
     }
 
-    final route = data['route']?.toString();
-    final articleId = data['article_id']?.toString() ?? data['articleId']?.toString();
+    // 1. Si viene una ruta explícita en el payload (ej. "/dispersion-request" o "/settings")
+    final explicitRoute = data['route']?.toString().trim();
+    if (explicitRoute != null && explicitRoute.isNotEmpty) {
+      try {
+        context.push(explicitRoute);
+        return;
+      } catch (e) {
+        debugPrint('Error navegando a ruta explícita ($explicitRoute): $e');
+      }
+    }
 
-    if (route != null && route.isNotEmpty) {
-      context.push(route);
-    } else if (articleId != null && articleId.isNotEmpty) {
-      context.push('/kb/article/$articleId');
+    // 2. Parseo inteligente por tipo de entidad y ID
+    final type = (data['type']?.toString() ?? '').toLowerCase().trim();
+    final id = data['id']?.toString() ??
+        data['article_id']?.toString() ??
+        data['articleId']?.toString() ??
+        data['dispersion_id']?.toString();
+
+    switch (type) {
+      case 'dispersion':
+      case 'dispersion_request':
+      case 'edenred':
+        context.push('/dispersion-request');
+        break;
+
+      case 'kb_article':
+      case 'kb':
+      case 'article':
+      case 'knowledge_base':
+        if (id != null && id.isNotEmpty) {
+          context.push('/kb/article/$id');
+        } else {
+          context.push('/knowledge-base');
+        }
+        break;
+
+      case 'incident':
+      case 'incidents':
+      case 'siniestro':
+        context.push('/incident-report');
+        break;
+
+      case 'checklist':
+        context.push('/checklist-detail');
+        break;
+
+      case 'checklist_history':
+        context.push('/checklist-history');
+        break;
+
+      case 'route':
+      case 'routes':
+      case 'entrega':
+      case 'os':
+        context.push('/routes');
+        break;
+
+      case 'notifications':
+      case 'notification':
+        context.push('/notifications');
+        break;
+
+      default:
+        // Si no coincide con ninguno pero viene un id de artículo legado
+        if (id != null && id.isNotEmpty && (data.containsKey('article_id') || data.containsKey('articleId'))) {
+          context.push('/kb/article/$id');
+        } else {
+          context.push('/notifications');
+        }
+        break;
     }
   }
 
