@@ -41,12 +41,20 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <receiver android:name=".SeloasaWidgetProvider" android:exported="true">
+        <receiver android:name=".SeloasaWidgetProvider" android:label="@string/widget_quick_report_title" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/seloasa_widget_info" />
+        </receiver>
+
+        <receiver android:name=".SosWidgetProvider" android:label="@string/widget_sos_title" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/sos_widget_info" />
         </receiver>
         <provider
             android:name="androidx.core.content.FileProvider"

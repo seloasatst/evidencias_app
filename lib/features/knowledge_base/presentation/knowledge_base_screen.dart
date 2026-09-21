@@ -49,28 +49,6 @@ class _KnowledgeBaseScreenState extends ConsumerState<KnowledgeBaseScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/seloasa_logo.png',
-              height: 20,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "BASE DE CONOCIMIENTOS",
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
       body: RefreshIndicator(
         color: AppColors.accentOrange,
         onRefresh: () async {

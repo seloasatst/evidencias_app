@@ -34,9 +34,9 @@ class SeloasaWidgetProvider : HomeWidgetProvider() {
                 )
                 setOnClickPendingIntent(R.id.btn_trafico, intentTrafico)
 
-                // Botón Emergencia
+                // Botón Emergencia SOS
                 val intentEmergencia = HomeWidgetLaunchIntent.getActivity(
-                    context, MainActivity::class.java, Uri.parse("seloasa://app/incident?type=EMERGENCIA&auto=true")
+                    context, MainActivity::class.java, Uri.parse("seloasa://app/sos")
                 )
                 setOnClickPendingIntent(R.id.btn_emergencia, intentEmergencia)
             }

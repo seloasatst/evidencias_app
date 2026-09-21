@@ -20,6 +20,7 @@ import '../features/knowledge_base/presentation/kb_article_detail_screen.dart';
 import '../features/knowledge_base/presentation/knowledge_base_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/sos/presentation/sos_screen.dart';
 import 'app_shell.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -247,6 +248,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             ruta: extra['ruta'] ?? 'RUTA GENERAL',
           );
         },
+      ),
+      GoRoute(
+        path: '/sos',
+        name: 'sos',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SosScreen(),
       ),
     ],
   );

@@ -4,6 +4,7 @@ import 'package:home_widget/home_widget.dart';
 class WidgetService {
   static const String _appGroupId = 'com.seloasa.seloasa_evidencias'; // Cambiar si es necesario
   static const String _androidWidgetName = 'SeloasaWidgetProvider';
+  static const String _androidSosWidgetName = 'SosWidgetProvider';
   static bool get _isSupportedPlatform => !kIsWeb;
 
   static Future<void> init() async {
@@ -18,6 +19,9 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>('route_title', title);
       await HomeWidget.updateWidget(
         androidName: _androidWidgetName,
+      );
+      await HomeWidget.updateWidget(
+        androidName: _androidSosWidgetName,
       );
     } catch (e) {
       debugPrint('Error actualizando widget: $e');

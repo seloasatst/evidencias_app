@@ -204,6 +204,23 @@ class _KbDocumentPreviewDialogState extends ConsumerState<KbDocumentPreviewDialo
       return;
     }
 
+    bool isWebViewSupported = false;
+    try {
+      isWebViewSupported = WebViewPlatform.instance != null;
+    } catch (_) {
+      isWebViewSupported = false;
+    }
+
+    if (!isWebViewSupported) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'El visor integrado no está disponible en esta plataforma/dispositivo. Puedes usar el botón DESCARGAR para ver este archivo.';
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     try {
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)

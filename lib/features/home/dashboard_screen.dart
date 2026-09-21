@@ -101,20 +101,14 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+            _buildSectionHeader("Seguridad y Asistencia"),
+            const SizedBox(height: 12),
             _buildSosEmergencyBanner(context, isDark),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildSectionHeader("Rutas actuales"),
             const SizedBox(height: 12),
             _buildIncidentsWidget(context),
-            const SizedBox(height: 24),
-            _buildSectionHeader("Dispersiones y Viáticos"),
-            const SizedBox(height: 12),
-            _buildDispersionWidget(context),
-            const SizedBox(height: 24),
-            _buildSectionHeader("Ayuda y Documentación"),
-            const SizedBox(height: 12),
-            _buildKnowledgeBaseWidget(context),
           ],
         ),
       ),
@@ -122,118 +116,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildSosEmergencyBanner(BuildContext context, bool isDark) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF3E1010), const Color(0xFF200B0B)]
-              : [const Color(0xFFFFECEC), const Color(0xFFFFF5F5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.redAccent.withValues(alpha: isDark ? 0.3 : 0.4),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withValues(alpha: isDark ? 0.2 : 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => SosModal.show(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.shade700,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.emergency_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            "Botón de Emergencia SOS",
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.red.shade400 : Colors.red.shade800,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.red.shade900 : Colors.red.shade700,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              "GPS",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Transmisión directa a Telemétricos",
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          color: isDark ? Colors.white60 : Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: Colors.redAccent,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKnowledgeBaseWidget(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -245,7 +127,7 @@ class DashboardScreen extends ConsumerWidget {
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
             blurRadius: 10,
-          )
+          ),
         ],
       ),
       child: Column(
@@ -255,38 +137,24 @@ class DashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                  color: const Color(0xFFD32F2F).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
-                  Icons.menu_book_rounded,
-                  color: AppColors.primaryGreen,
+                  Icons.emergency_rounded,
+                  color: Color(0xFFD32F2F),
                   size: 28,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Base de Conocimientos",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Guías de inicio de ruta, manuales de carta porte, evidencias y más.",
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: isDark ? Colors.white60 : AppColors.textSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  "Botón de Pánico S.O.S",
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],
@@ -295,10 +163,10 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => context.pushNamed('knowledge_base'),
-              icon: const Icon(Icons.search_rounded, size: 18),
+              onPressed: () => SosModal.show(context),
+              icon: const Icon(Icons.warning_amber_rounded, size: 18, color: Colors.white),
               label: Text(
-                "EXPLORAR GUÍAS Y MANUALES",
+                "ACTIVAR ALERTA S.O.S",
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -306,7 +174,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: const Color(0xFFD32F2F),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 elevation: 0,
@@ -318,6 +186,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  // ignore: unused_element
   Widget _buildDispersionWidget(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(

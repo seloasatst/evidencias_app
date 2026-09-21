@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../core/config/app_api_config.dart';
 import '../../../../ui/theme/app_colors.dart';
@@ -504,92 +505,10 @@ class KbHtmlContent extends StatelessWidget {
   }
 
   Widget _buildVideoBlock(BuildContext context, String url, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white10 : AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.play_circle_fill_rounded, color: Colors.red, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Video Explicativo",
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: isDark ? Colors.white54 : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final uri = Uri.tryParse(url);
-                if (uri != null) {
-                  try {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (_) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Enlace de video: $url")),
-                      );
-                    }
-                  }
-                }
-              },
-              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: Text(
-                "VER VIDEO",
-                style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.accentOrange,
-                side: const BorderSide(color: AppColors.accentOrange),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return _KbVideoPlayerEmbedWidget(
+      rawUrl: url,
+      isDark: isDark,
+      resolveUrl: _resolveUrl,
     );
   }
 
@@ -706,6 +625,36 @@ class KbHtmlContent extends StatelessWidget {
     if (trimmed.isEmpty) return '';
     if (trimmed.startsWith('data:image')) return trimmed;
 
+    // Protocol-relative URLs: //www.youtube.com/... or //youtube.com/...
+    if (trimmed.startsWith('//')) {
+      return 'https:$trimmed';
+    }
+
+    // Direct domain names without scheme: www.youtube.com / youtube.com / youtu.be / vimeo.com
+    final lower = trimmed.toLowerCase();
+    if (lower.startsWith('www.') ||
+        lower.startsWith('youtube.com/') ||
+        lower.startsWith('youtu.be/') ||
+        lower.startsWith('vimeo.com/') ||
+        lower.startsWith('player.vimeo.com/')) {
+      return 'https://$trimmed';
+    }
+
+    // External http:// or https:// URLs
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      // Fix double domain prefixing e.g. http://server.com//www.youtube.com/embed/...
+      final doubleDomainMatch = RegExp(
+        r'https?:\/\/[^\/]+\/(?:https?:)?\/\/(?:www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/(.*)',
+        caseSensitive: false,
+      ).firstMatch(trimmed);
+      if (doubleDomainMatch != null) {
+        final domain = doubleDomainMatch.group(1);
+        final rest = doubleDomainMatch.group(2);
+        return 'https://$domain/$rest';
+      }
+      return trimmed;
+    }
+
     final base = AppApiConfig.evidenciasBaseUrl;
     final uri = Uri.parse(base);
     final portStr = (uri.hasPort && uri.port != 80 && uri.port != 443)
@@ -719,10 +668,6 @@ class KbHtmlContent extends StatelessWidget {
     if (match != null) {
       final subpath = match.group(1) ?? '';
       return '$serverRoot/$subpath';
-    }
-
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
     }
 
     final cleanPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
@@ -889,7 +834,7 @@ class KbHtmlContent extends StatelessWidget {
 
     // 3. Extraer bloques restantes del cuerpo
     final tagPattern = RegExp(
-      r'<(table|h1|h2|h3|h4|h5|h6|ol|ul|blockquote|pre|figure|iframe|video|hr|div|p)[^>]*>(.*?)<\/\1>|<img\s+[^>]*src="([^"]+)"[^>]*>|<video\s+[^>]*src="([^"]+)"[^>]*\/?>|<hr\s*\/?>',
+      r'<(table|h1|h2|h3|h4|h5|h6|ol|ul|blockquote|pre|figure|iframe|video|hr|div|p)[^>]*>(.*?)<\/\1>|<img\s+[^>]*src=["\x27]([^"\x27]+)["\x27][^>]*>|<video\s+[^>]*src=["\x27]([^"\x27]+)["\x27][^>]*\/?>|<iframe\s+[^>]*src=["\x27]([^"\x27]+)["\x27][^>]*\/?>|<hr\s*\/?>',
       dotAll: true,
       caseSensitive: false,
     );
@@ -901,7 +846,12 @@ class KbHtmlContent extends StatelessWidget {
       for (final p in paragraphs) {
         final clean = p.trim();
         if (clean.isNotEmpty) {
-          blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: clean));
+          final vidUrl = _extractVideoUrlFromHtml(clean);
+          if (vidUrl != null) {
+            blocks.add(_HtmlBlock(type: _BlockType.video, text: vidUrl));
+          } else {
+            blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: clean));
+          }
         }
       }
       return blocks;
@@ -913,6 +863,7 @@ class KbHtmlContent extends StatelessWidget {
       final inner = match.group(2) ?? '';
       final imgSrc = match.group(3);
       final videoSrc = match.group(4);
+      final iframeSrc = match.groupCount >= 5 ? match.group(5) : null;
 
       if (fullMatch.startsWith('<hr') || tag == 'hr') {
         blocks.add(_HtmlBlock(type: _BlockType.divider, text: ''));
@@ -929,6 +880,11 @@ class KbHtmlContent extends StatelessWidget {
         continue;
       }
 
+      if (iframeSrc != null) {
+        blocks.add(_HtmlBlock(type: _BlockType.video, text: iframeSrc));
+        continue;
+      }
+
       if (tag == null) continue;
 
       switch (tag) {
@@ -940,7 +896,7 @@ class KbHtmlContent extends StatelessWidget {
           break;
 
         case 'img':
-          final srcMatch = RegExp(r'src="([^"]+)"').firstMatch(fullMatch);
+          final srcMatch = RegExp(r'src=["\x27]([^"\x27]+)["\x27]', caseSensitive: false).firstMatch(fullMatch);
           if (srcMatch != null) {
             blocks.add(_HtmlBlock(type: _BlockType.image, text: srcMatch.group(1)!));
           }
@@ -948,19 +904,26 @@ class KbHtmlContent extends StatelessWidget {
 
         case 'iframe':
         case 'video':
-          final srcMatch = RegExp(r'src="([^"]+)"').firstMatch(fullMatch);
-          final src = srcMatch?.group(1) ?? inner;
-          if (src.isNotEmpty) {
-            blocks.add(_HtmlBlock(type: _BlockType.video, text: src));
+          final vidUrl = _extractVideoUrlFromHtml(fullMatch) ?? _extractVideoUrlFromHtml(inner) ?? inner.trim();
+          if (vidUrl.isNotEmpty) {
+            blocks.add(_HtmlBlock(type: _BlockType.video, text: vidUrl));
           }
           break;
 
         case 'figure':
-          final imgMatch = RegExp(r'<img\s+[^>]*src="([^"]+)"[^>]*>').firstMatch(inner);
-          if (imgMatch != null) {
-            blocks.add(_HtmlBlock(type: _BlockType.image, text: imgMatch.group(1)!));
+          final vidUrl = _extractVideoUrlFromHtml(inner);
+          if (vidUrl != null) {
+            blocks.add(_HtmlBlock(type: _BlockType.video, text: vidUrl));
           } else {
-            blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: inner.trim()));
+            final imgMatch = RegExp(r'<img\s+[^>]*src=["\x27]([^"\x27]+)["\x27][^>]*>', caseSensitive: false).firstMatch(inner);
+            if (imgMatch != null) {
+              blocks.add(_HtmlBlock(type: _BlockType.image, text: imgMatch.group(1)!));
+            } else {
+              final cleanText = _stripHtml(inner).trim();
+              if (cleanText.isNotEmpty) {
+                blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: cleanText));
+              }
+            }
           }
           break;
 
@@ -1023,15 +986,30 @@ class KbHtmlContent extends StatelessWidget {
         case 'div':
         case 'p':
         default:
-          final embeddedImg = RegExp(r'<img\s+[^>]*src="([^"]+)"[^>]*>').firstMatch(inner);
-          if (embeddedImg != null) {
-            blocks.add(_HtmlBlock(type: _BlockType.image, text: embeddedImg.group(1)!));
+          final vidUrl = _extractVideoUrlFromHtml(inner);
+          if (vidUrl != null) {
+            final textWithoutVideoTags = inner
+                .replaceAll(RegExp(r'<(?:iframe|video|source|embed|oembed)[^>]*>(?:.*?<\/(?:iframe|video|embed|oembed)>)?', dotAll: true, caseSensitive: false), '')
+                .replaceAll(RegExp(r'https?:\/\/[^\s"<>]+\.(?:mp4|webm|mov|m3u8)', caseSensitive: false), '');
+            final cleanText = _stripHtml(textWithoutVideoTags).trim();
+            if (cleanText.isNotEmpty) {
+              blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: cleanText));
+            }
+            blocks.add(_HtmlBlock(type: _BlockType.video, text: vidUrl));
           } else {
-            if (inner.contains('<ol') || inner.contains('<ul')) {
-              final subBlocks = _parseHtmlToBlocks(inner);
-              blocks.addAll(subBlocks);
-            } else if (inner.trim().isNotEmpty) {
-              blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: inner.trim()));
+            final embeddedImg = RegExp(r'<img\s+[^>]*src=["\x27]([^"\x27]+)["\x27][^>]*>', caseSensitive: false).firstMatch(inner);
+            if (embeddedImg != null) {
+              blocks.add(_HtmlBlock(type: _BlockType.image, text: embeddedImg.group(1)!));
+            } else {
+              if (inner.contains('<ol') || inner.contains('<ul')) {
+                final subBlocks = _parseHtmlToBlocks(inner);
+                blocks.addAll(subBlocks);
+              } else {
+                final cleanText = _stripHtml(inner).trim();
+                if (cleanText.isNotEmpty) {
+                  blocks.add(_HtmlBlock(type: _BlockType.paragraph, text: cleanText));
+                }
+              }
             }
           }
           break;
@@ -1039,6 +1017,71 @@ class KbHtmlContent extends StatelessWidget {
     }
 
     return blocks;
+  }
+
+  static String? _extractVideoUrlFromHtml(String snippet) {
+    if (snippet.trim().isEmpty) return null;
+
+    final srcMatch = RegExp(
+      r'<(?:iframe|video|source|embed|oembed)[^>]*?\s+(?:src|url)=["\x27]?([^"\x27\s>]+)["\x27]?',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(snippet);
+    if (srcMatch != null) {
+      var url = srcMatch.group(1)?.trim() ?? '';
+      if (url.startsWith('//')) {
+        url = 'https:$url';
+      } else if (url.startsWith('www.')) {
+        url = 'https://$url';
+      }
+      if (url.isNotEmpty) return url;
+    }
+
+    final oembedMatch = RegExp(
+      r'url=["\x27]([^"\x27]+)["\x27]',
+      caseSensitive: false,
+    ).firstMatch(snippet);
+    if (oembedMatch != null) {
+      var url = oembedMatch.group(1)?.trim() ?? '';
+      if (url.startsWith('//')) {
+        url = 'https:$url';
+      } else if (url.startsWith('www.')) {
+        url = 'https://$url';
+      }
+      if (url.isNotEmpty) return url;
+    }
+
+    final ytMatch = RegExp(
+      r'(?:https?:)?\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)',
+      caseSensitive: false,
+    ).firstMatch(snippet);
+    if (ytMatch != null) {
+      final id = ytMatch.group(1);
+      if (id != null && id.isNotEmpty) {
+        return 'https://www.youtube.com/embed/$id';
+      }
+    }
+
+    final vimeoMatch = RegExp(
+      r'(?:https?:)?\/\/(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)',
+      caseSensitive: false,
+    ).firstMatch(snippet);
+    if (vimeoMatch != null) {
+      final id = vimeoMatch.group(1);
+      if (id != null && id.isNotEmpty) {
+        return 'https://player.vimeo.com/video/$id';
+      }
+    }
+
+    final directMediaMatch = RegExp(
+      r'https?:\/\/[^\s"<>]+\.(?:mp4|webm|mov|m3u8|ogg)(?:\?[^\s"<>]*)?',
+      caseSensitive: false,
+    ).firstMatch(snippet);
+    if (directMediaMatch != null) {
+      return directMediaMatch.group(0);
+    }
+
+    return null;
   }
 
   List<String> _extractListItems(String listHtml) {
@@ -1104,4 +1147,320 @@ class _HtmlBlock {
     this.listItems,
     this.tableData,
   });
+}
+
+class _KbVideoPlayerEmbedWidget extends StatefulWidget {
+  final String rawUrl;
+  final bool isDark;
+  final String Function(String) resolveUrl;
+
+  const _KbVideoPlayerEmbedWidget({
+    required this.rawUrl,
+    required this.isDark,
+    required this.resolveUrl,
+  });
+
+  @override
+  State<_KbVideoPlayerEmbedWidget> createState() => _KbVideoPlayerEmbedWidgetState();
+}
+
+class _KbVideoPlayerEmbedWidgetState extends State<_KbVideoPlayerEmbedWidget> {
+  WebViewController? _controller;
+  bool _isLoading = true;
+  bool _hasError = false;
+  bool _isWebViewSupported = false;
+  String _finalResolvedUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSupportAndInit();
+  }
+
+  void _checkSupportAndInit() {
+    try {
+      _isWebViewSupported = WebViewPlatform.instance != null;
+    } catch (_) {
+      _isWebViewSupported = false;
+    }
+
+    final resolved = widget.resolveUrl(widget.rawUrl);
+    _finalResolvedUrl = resolved;
+
+    if (resolved.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+      return;
+    }
+
+    if (!_isWebViewSupported) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final embedUrl = _getEmbedUrl(resolved);
+
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..setUserAgent(
+          "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+        )
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (_) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+              }
+            },
+            onWebResourceError: (err) {
+              if (mounted && _isLoading) {
+                setState(() => _isLoading = false);
+              }
+            },
+          ),
+        );
+
+      final uri = Uri.tryParse(embedUrl);
+      if (uri != null) {
+        controller.loadRequest(
+          uri,
+          headers: embedUrl.contains('youtube')
+              ? const {'Referer': 'https://www.youtube-nocookie.com'}
+              : const {},
+        );
+        _controller = controller;
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _hasError = true;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  String _getEmbedUrl(String url) {
+    final ytMatch = RegExp(
+      r'(?:https?:)?\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtube-nocookie\.com\/embed\/|youtu\.be\/)([\w-]+)',
+      caseSensitive: false,
+    ).firstMatch(url);
+
+    if (ytMatch != null) {
+      final ytId = ytMatch.group(1);
+      final startMatch = RegExp(r'[?&](?:start|t)=(\d+)').firstMatch(url);
+      final startParam = startMatch != null ? '&start=${startMatch.group(1)}' : '';
+      return 'https://www.youtube-nocookie.com/embed/$ytId?playsinline=1&rel=0&modestbranding=1$startParam';
+    }
+
+    if (url.contains('vimeo.com') && !url.contains('player.vimeo.com')) {
+      final vimeoMatch = RegExp(r'vimeo\.com\/(\d+)').firstMatch(url);
+      if (vimeoMatch != null) {
+        return 'https://player.vimeo.com/video/${vimeoMatch.group(1)}';
+      }
+    }
+
+    return url;
+  }
+
+  String _getWatchUrl(String url) {
+    final ytMatch = RegExp(
+      r'(?:https?:)?\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)',
+      caseSensitive: false,
+    ).firstMatch(url);
+
+    if (ytMatch != null) {
+      final ytId = ytMatch.group(1);
+      final startMatch = RegExp(r'[?&](?:start|t)=(\d+)').firstMatch(url);
+      final startParam = startMatch != null ? '&t=${startMatch.group(1)}s' : '';
+      return 'https://www.youtube.com/watch?v=$ytId$startParam';
+    }
+
+    return url;
+  }
+
+  Future<void> _launchExternal() async {
+    final rawTarget = _finalResolvedUrl.isNotEmpty ? _finalResolvedUrl : widget.rawUrl;
+    final watchTarget = _getWatchUrl(rawTarget);
+    final uri = Uri.tryParse(watchTarget);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final displayWatchUrl = _getWatchUrl(_finalResolvedUrl.isNotEmpty ? _finalResolvedUrl : widget.rawUrl);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white12 : AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.play_circle_fill_rounded, color: Colors.red, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Video Explicativo",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        displayWatchUrl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: isDark ? Colors.white54 : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(0),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: Colors.black,
+                child: InkWell(
+                  onTap: _launchExternal,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (_isWebViewSupported && _controller != null && !_hasError)
+                        WebViewWidget(controller: _controller!)
+                      else ...[
+                        Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFF2A2A2A), Color(0xFF111111)],
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.85),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.red.withValues(alpha: 0.4),
+                                        blurRadius: 16,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 38,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "Toca para reproducir video",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (_isLoading && _isWebViewSupported)
+                        const Center(
+                          child: CircularProgressIndicator(color: AppColors.accentOrange),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _launchExternal,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(
+                  "ABRIR EN NAVEGADOR EXTERNO",
+                  style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentOrange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">One Route</string>
+    <string name="widget_quick_report_title">One Route • Reportes Rápidos</string>
+    <string name="widget_quick_report_desc">Acceso rápido a fallas mecánicas, tráfico y emergencias.</string>
+    <string name="widget_sos_title">One Route • Botón de Pánico (S.O.S)</string>
+    <string name="widget_sos_desc">Botón exclusivo de alerta crítica y transmisión de emergencia.</string>
+</resources>
