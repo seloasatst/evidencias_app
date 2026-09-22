@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:ota_update/ota_update.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:seloasa_evidencias/ui/theme/app_colors.dart';
 
 class UpdateService {
+  static const MethodChannel _updateChannel = MethodChannel('com.seloasa.seloasa_evidencias/update');
   // URL del JSON que contiene la información de la última versión
   static const String _versionJsonUrl = 'http://rutas.seloasa.com.mx:2350/descargas/version.json';
 
@@ -130,67 +131,17 @@ class _UpdateDialogWidgetState extends State<_UpdateDialogWidget> {
     });
 
     try {
-      OtaUpdate().execute(
-        widget.apkUrl,
-        destinationFilename: 'seloasa-evidencias-update.apk',
-      ).listen(
-        (OtaEvent event) {
-          debugPrint('[UpdateService] OtaEvent: status=${event.status}, value=${event.value}');
-          switch (event.status) {
-            case OtaStatus.DOWNLOADING:
-              final double progress = double.tryParse(event.value ?? '0') ?? 0.0;
-              setState(() {
-                _downloadProgress = progress / 100;
-                _statusText = 'Descargando actualización (${progress.toStringAsFixed(0)}%)...';
-              });
-              break;
-            case OtaStatus.INSTALLING:
-              setState(() {
-                _statusText = 'Iniciando instalación...';
-              });
-              break;
-            case OtaStatus.ALREADY_RUNNING_ERROR:
-              _showError('Ya hay una descarga en curso.');
-              break;
-            case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-              _showError(
-                'Se requiere permiso para instalar aplicaciones. '
-                'Ve a Configuración → Seguridad → Instalar apps desconocidas.',
-              );
-              break;
-            case OtaStatus.INTERNAL_ERROR:
-              _showError(
-                'Error interno al procesar el paquete (código: ${event.value}). '
-                'El archivo puede estar corrupto o el servidor devolvió un formato inválido.',
-              );
-              break;
-            case OtaStatus.DOWNLOAD_ERROR:
-              _showError(
-                'Error durante la descarga (código: ${event.value}). '
-                'Verifique su conexión a internet e intente de nuevo.',
-              );
-              break;
-            case OtaStatus.CHECKSUM_ERROR:
-              _showError(
-                'El archivo descargado está dañado (checksum inválido). '
-                'Intente de nuevo o contacte a soporte.',
-              );
-              break;
-            default:
-              _showError(
-                'Error inesperado (estado: ${event.status}, valor: ${event.value}). '
-                'Intente de nuevo.',
-              );
-              break;
-          }
-        },
-        onError: (err) {
-          debugPrint('[UpdateService] Stream error: $err');
-          _showError('Error de red al descargar actualización: $err');
-        },
-      );
+      await UpdateService._updateChannel.invokeMethod<int>('downloadUpdate', {
+        'url': widget.apkUrl,
+        'filename': 'seloasa-evidencias-update.apk',
+      });
+      if (!mounted) return;
+      setState(() {
+        _statusText = 'Descarga iniciada. Puede bloquear el teléfono; continuará en segundo plano.';
+      });
+    } on PlatformException catch (e) {
+      _showError('No se pudo iniciar la descarga: ${e.message ?? e.code}');
     } catch (e) {
-      debugPrint('[UpdateService] Exception al iniciar OTA: $e');
       _showError('No se pudo iniciar la descarga: $e');
     }
   }
