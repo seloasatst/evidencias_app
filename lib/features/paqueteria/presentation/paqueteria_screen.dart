@@ -52,7 +52,7 @@ class _PaqueteriaScreenState extends ConsumerState<PaqueteriaScreen> {
               controller: _buscadorCtrl,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Número de guía, destino...',
+                hintText: 'Número, NE, OS, OR, destino...',
                 hintStyle: GoogleFonts.poppins(
                   fontSize: 14,
                   color: isDark ? Colors.white38 : AppColors.textSecondary.withOpacity(0.5),
@@ -100,14 +100,7 @@ class _PaqueteriaScreenState extends ConsumerState<PaqueteriaScreen> {
                 final query = _normalizeSearch(_buscadorCtrl.text);
                 final filtered = query.isEmpty
                     ? guias
-                    : guias.where((guia) {
-                        final searchable = [
-                          guia.id,
-                          guia.coverage,
-                          guia.status,
-                        ].join(' ').toLowerCase();
-                        return searchable.contains(query);
-                      }).toList();
+                    : guias.where((guia) => guia.searchableText().contains(query)).toList();
 
                 if (filtered.isEmpty) {
                   return Padding(

@@ -21,6 +21,8 @@ import '../features/knowledge_base/presentation/knowledge_base_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/sos/presentation/sos_screen.dart';
+import '../features/checador/presentation/checador_home_screen.dart';
+import '../features/checador/presentation/checador_history_screen.dart';
 import 'app_shell.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -155,6 +157,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/kb',
             name: 'knowledge_base',
             builder: (context, state) => const KnowledgeBaseScreen(),
+          ),
+          GoRoute(
+            path: '/checador',
+            name: 'checador',
+            builder: (context, state) => const ChecadorHomeScreen(),
+          ),
+          GoRoute(
+            path: '/checador/historial',
+            name: 'checador_historial',
+            builder: (context, state) => const ChecadorHistoryScreen(),
           ),
         ],
       ),

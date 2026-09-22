@@ -22,7 +22,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _form = GlobalKey<FormState>();
   final _user = TextEditingController();
   final _pass = TextEditingController();
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   bool _obscure = true;
   bool _isBiometricEnabled = false;

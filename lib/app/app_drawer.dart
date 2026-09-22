@@ -222,6 +222,13 @@ class AppDrawer extends ConsumerWidget {
                     isSelected: currentPath.startsWith('/kb'),
                     onTap: () => _navigateTo(context, 'knowledge_base'),
                   ),
+                  _DrawerItem(
+                    icon: Icons.access_time_outlined,
+                    activeIcon: Icons.access_time_filled_rounded,
+                    label: 'Checador de Asistencia',
+                    isSelected: currentPath.startsWith('/checador'),
+                    onTap: () => _navigateTo(context, 'checador'),
+                  ),
 
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),

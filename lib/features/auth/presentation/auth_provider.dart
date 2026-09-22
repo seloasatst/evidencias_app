@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/app_api_config.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_api.dart';
@@ -65,14 +66,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _init();
   }
 
-  Future<void> _init() async {
-    final token = await _storage.getToken();
-    if (token != null) {
-      // Si ya hay un token, podríamos intentar recuperar el usuario
-      // Pero para forzar el login manual según pide el usuario, 
-      // lo dejamos así para que el router redirija a /login
+  static const _prefChecadorSapCode = 'checador_sap_code';
+  static const _prefChecadorNombre = 'checador_nombre_empleado';
+
+  Future<void> _persistChecadorIdentity(AuthUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final sapCode = user.code.trim().isNotEmpty
+        ? user.code.trim()
+        : (user.cardCode?.trim().isNotEmpty == true
+            ? user.cardCode!.trim()
+            : user.username.trim());
+    if (sapCode.isNotEmpty) {
+      await prefs.setString(_prefChecadorSapCode, sapCode);
     }
-    state = state.copyWith(isInitialized: true);
+
+    final nombre = user.name.trim().isNotEmpty
+        ? user.name.trim()
+        : user.username.trim();
+    if (nombre.isNotEmpty) {
+      await prefs.setString(_prefChecadorNombre, nombre);
+    }
+  }
+
+  Future<void> _init() async {
+    try {
+      // Timeout de 5s para evitar bloqueo del Android KeyStore en dispositivos MediaTek
+      await _storage.getToken().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null,
+      );
+    } catch (_) {
+      // Si falla el almacenamiento seguro, continuamos de todas formas
+    } finally {
+      // isInitialized SIEMPRE se establece para que el router no se quede colgado
+      if (mounted) state = state.copyWith(isInitialized: true);
+    }
   }
 
   Future<bool> login(String user, String pass) async {
@@ -80,9 +109,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await _repository.login(user, pass);
       await _storage.saveToken(response.token);
+
+      await _persistChecadorIdentity(response.user);
       
       // Guardamos credenciales para persistencia y biometría
-      const secureStorage = FlutterSecureStorage();
+      const secureStorage = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
       await secureStorage.write(key: 'saved_user', value: user);
       await secureStorage.write(key: 'saved_pass', value: pass);
 
@@ -100,7 +133,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<Map<String, String>?> getSavedCredentials() async {
-    const secureStorage = FlutterSecureStorage();
+    const secureStorage = FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    );
     final user = await secureStorage.read(key: 'saved_user');
     final pass = await secureStorage.read(key: 'saved_pass');
     if (user != null && pass != null) {

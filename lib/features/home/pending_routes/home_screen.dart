@@ -58,15 +58,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final query = _normalizeSearch(_buscadorCtrl.text);
               final filtered = query.isEmpty
                   ? rutas
-                  : rutas.where((ruta) {
-                      final searchable = [
-                        ruta.id,
-                        ruta.routeId,
-                        ruta.coverage,
-                        ruta.status,
-                      ].join(' ').toLowerCase();
-                      return searchable.contains(query);
-                    }).toList();
+                  : rutas.where((ruta) => ruta.searchableText().contains(query)).toList();
 
               final hasMore = ref.watch(pendingRoutesProvider.notifier).hasMore;
 
@@ -97,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             });
                           },
                           decoration: InputDecoration(
-                            hintText: 'Numero, cliente, destino',
+                            hintText: 'NE, OS, OR, número, destino',
                             hintStyle: GoogleFonts.poppins(
                               fontSize: 14,
                               color: isDark ? Colors.white38 : AppColors.textSecondary.withOpacity(0.5),

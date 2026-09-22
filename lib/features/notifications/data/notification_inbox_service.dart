@@ -4,7 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../domain/notification_item.dart';
 
 class NotificationInboxService {
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
   static const _storageKey = 'seloasa_notifications_inbox_v1';
   static const int _maxSavedNotifications = 60;
 

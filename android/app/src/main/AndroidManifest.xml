@@ -22,6 +22,11 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Deshabilitar Impeller/Vulkan — causa pantalla negra en dispositivos MediaTek (Infinix) -->
+            <!-- Confirmado: desactivar Impeller resuelve el problema en Infinix X6855 -->
+            <meta-data
+              android:name="io.flutter.embedding.android.EnableImpeller"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

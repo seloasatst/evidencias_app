@@ -50,27 +50,35 @@ class FcmService {
     _navigatorKey = navigatorKey;
 
     try {
-      // 1. Solicitar permisos de notificación (Android 13+ / iOS)
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
+      // 1. Solicitar permisos — con try/catch para capturar TimeoutException
+      NotificationSettings? settings;
+      try {
+        settings = await _messaging.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        ).timeout(const Duration(seconds: 10));
+        debugPrint('FCM Permisos: ${settings.authorizationStatus}');
+      } catch (e) {
+        debugPrint('FCM: Error/timeout solicitando permisos: $e');
+      }
 
-      debugPrint('FCM Permisos: ${settings.authorizationStatus}');
+      // 2. Configurar presentación foreground con timeout
+      try {
+        await _messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        ).timeout(const Duration(seconds: 5));
+      } catch (e) {
+        debugPrint('FCM: Error/timeout configurando presentación foreground: $e');
+      }
 
-      // 2. Configurar presentación de notificaciones en primer plano para iOS / Android
-      await _messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-            // 3. Suscribirse a canales y temas clave de OneRoute / Seloasa
+      // 3. Suscribirse a temas EN PARALELO — cada uno con timeout individual
       final topics = [
         'kb_articles',
         'oneroute_general',
@@ -79,18 +87,28 @@ class FcmService {
         'dispersion_updates',
         'incident_alerts',
       ];
-      for (final topic in topics) {
-        try {
-          await _messaging.subscribeToTopic(topic);
-          debugPrint('FCM: Suscrito con exito al tema "$topic"');
-        } catch (e) {
-          debugPrint('FCM: Error al suscribirse al tema "$topic": $e');
-        }
-      }
+      await Future.wait<void>(
+        topics.map((topic) async {
+          try {
+            await _messaging
+                .subscribeToTopic(topic)
+                .timeout(const Duration(seconds: 10));
+            debugPrint('FCM: Suscrito con exito al tema "$topic"');
+          } catch (e) {
+            debugPrint('FCM: Error/timeout al suscribirse al tema "$topic": $e');
+          }
+        }),
+      );
 
-      // 4. Obtener y loguear token de dispositivo (opcional para debugging o envíos dirigidos)
-      final token = await _messaging.getToken();
-      debugPrint('FCM Token de dispositivo: $token');
+      // 4. Obtener token con timeout
+      try {
+        final token = await _messaging
+            .getToken()
+            .timeout(const Duration(seconds: 10));
+        debugPrint('FCM Token de dispositivo: $token');
+      } catch (e) {
+        debugPrint('FCM: Error/timeout obteniendo token: $e');
+      }
 
       // 5. Escuchar mensajes cuando la app está en PRIMER PLANO
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -98,19 +116,25 @@ class FcmService {
         _handleForegroundMessage(message);
       });
 
-      // 6. Escuchar cuando el usuario TOCA una notificación (App estaba en SEGUNDO PLANO)
+      // 6. Escuchar cuando el usuario TOCA una notificación (App en SEGUNDO PLANO)
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         debugPrint('FCM Notificación tocada desde segundo plano: ${message.data}');
         _handleNotificationClick(message.data);
       });
 
-      // 7. Verificar si la app fue abierta desde estado TERMINADO mediante un tap en notificación
-      final initialMessage = await _messaging.getInitialMessage();
-      if (initialMessage != null) {
-        debugPrint('FCM App abierta desde notificación terminada: ${initialMessage.data}');
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          _handleNotificationClick(initialMessage.data);
-        });
+      // 7. Verificar si la app fue abierta desde estado TERMINADO
+      try {
+        final initialMessage = await _messaging
+            .getInitialMessage()
+            .timeout(const Duration(seconds: 5));
+        if (initialMessage != null) {
+          debugPrint('FCM App abierta desde notificación terminada: ${initialMessage.data}');
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            _handleNotificationClick(initialMessage.data);
+          });
+        }
+      } catch (e) {
+        debugPrint('FCM: Error/timeout obteniendo mensaje inicial: $e');
       }
 
       _initialized = true;

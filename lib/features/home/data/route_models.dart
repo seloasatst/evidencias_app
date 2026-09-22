@@ -60,12 +60,29 @@ class RouteModel {
       'ordenes': orders.map((o) => o.toJson()).toList(),
     };
   }
+
+  String searchableText() {
+    final orderParts = orders.expand((o) => [
+      o.guideNumber,
+      o.os,
+      o.referenceOr,
+      o.ne,
+      o.pieces,
+      o.scheduledDate,
+      o.destinationState,
+      o.client,
+      o.address,
+      o.time,
+    ]).toList();
+    return [id, routeId, coverage, status, type, ...orderParts].join(' ').toLowerCase();
+  }
 }
 
 class OrderModel {
   final String guideNumber;
   final String os;
   final String referenceOr;
+  final String ne;
   final String pieces;
   final String scheduledDate;
   final String destinationState;
@@ -77,6 +94,7 @@ class OrderModel {
     required this.guideNumber,
     required this.os,
     required this.referenceOr,
+    required this.ne,
     required this.pieces,
     required this.scheduledDate,
     required this.destinationState,
@@ -89,6 +107,16 @@ class OrderModel {
     return OrderModel(
       guideNumber: (json['numeroGuia'] ?? json['numGuia'] ?? json['guia'] ?? '').toString(),
       os: (json['os'] ?? json['numOs'] ?? json['ordenServicio'] ?? '').toString(),
+      ne: (
+        json['ne'] ??
+        json['NE'] ??
+        json['numeroEmbarque'] ??
+        json['numEmbarque'] ??
+        json['noEmbarque'] ??
+        json['numeroEntrega'] ??
+        json['notaEntrega'] ??
+        ''
+      ).toString(),
       referenceOr: (
         json['referenciaOR'] ??
         json['referenciaOr'] ??
@@ -113,6 +141,7 @@ class OrderModel {
       'numeroGuia': guideNumber,
       'os': os,
       'referenciaOR': referenceOr,
+      'ne': ne,
       'ppza': pieces,
       'fechaProgramada': scheduledDate,
       'estadoDestino': destinationState,
